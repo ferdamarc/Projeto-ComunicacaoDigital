@@ -4,13 +4,13 @@ Este projeto contempla a implementação de um jogo da velha em que dois sistema
 O desenvolvimento deste trabalho é parte da pontuação da disciplina Laboratório de Sistemas Computacionais: Comunicação Digital, ministrada na Universidade Federal de São Paulo, no Curso de Engenharia de Computação.
 
 ## Desenvolvimento
-... TESTEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
+<!-- ... TESTEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
 ![Esquemático de ligações dos sistemas](./images/connection_diagram.png)
 ... TESTEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
 
 ... TESTEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
 ![Fluxograma em alto nível do jogo](./images/buzzer_flowchart.png)
-... TESTEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
+... TESTEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE -->
 
 
 ## Resultados
