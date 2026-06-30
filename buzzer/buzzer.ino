@@ -1,64 +1,55 @@
-#include "pitches.h"
-#include "globals.h"
+#include <SoftwareSerial.h>
 
-// Variável que simula o valor que depois virá da UART
-int uart_simulada = ESTADO_NENHUM;
+const uint8_t PINO_RX     = 10;   // recebe do FPGA (uart_tx_pin)
+const uint8_t PINO_TX     = 11;   // envia o ACK ao FPGA
+const uint8_t PINO_BUZZER = 8;    // buzzer
 
-// Evita repetir a mesma música sem necessidade
-int ultimo_estado_processado = -1;
+const uint8_t ACK_FIM_SOM = 0xFF; // byte enviado ao FPGA quando o som termina
+
+SoftwareSerial fpgaSerial(PINO_RX, PINO_TX);
 
 void setup() {
-  pinMode(BUZZER_PIN, OUTPUT);
-  digitalWrite(BUZZER_PIN, LOW);
+  pinMode(PINO_BUZZER, OUTPUT);
+  Serial.begin(9600);        // monitor serial
+  fpgaSerial.begin(9600);    // !! mesma baud do modulo uart_tx no FPGA
+  Serial.println("Aguardando resultado do FPGA...");
+}
+
+void melodiaJogador1() {      // ascendente
+  tone(PINO_BUZZER, 523, 150); delay(180);
+  tone(PINO_BUZZER, 659, 150); delay(180);
+  tone(PINO_BUZZER, 784, 300); delay(320);
+  noTone(PINO_BUZZER);
+}
+
+void melodiaJogador2() {      // descendente
+  tone(PINO_BUZZER, 784, 150); delay(180);
+  tone(PINO_BUZZER, 659, 150); delay(180);
+  tone(PINO_BUZZER, 523, 300); delay(320);
+  noTone(PINO_BUZZER);
+}
+
+void melodiaEmpate() {        // dois beeps curtos
+  tone(PINO_BUZZER, 440, 120); delay(160);
+  tone(PINO_BUZZER, 440, 120); delay(160);
+  noTone(PINO_BUZZER);
 }
 
 void loop() {
-  uart_simulada = ESTADO_VITORIA_P1; // Mudar estado aqui para simular UART
+  if (fpgaSerial.available() > 0) {
+    int b = fpgaSerial.read();
+    Serial.print("Recebido do FPGA: ");
+    Serial.println(b);
 
-  if (uart_simulada != ultimo_estado_processado) {
-    processarEstado(uart_simulada);
-    ultimo_estado_processado = uart_simulada;
-  }
-
-  delay(200);
-}
-
-void processarEstado(int estado) {
-  switch (estado) {
-    case ESTADO_VITORIA_P1:
-      tocarMelodia(melodyJ1, noteDurationsJ1, sizeof(melodyJ1) / sizeof(int));
-      break;
-
-    case ESTADO_VITORIA_P2:
-      tocarMelodia(melodyJ2, noteDurationsJ2, sizeof(melodyJ2) / sizeof(int));
-      break;
-
-    case ESTADO_EMPATE:
-      tocarMelodia(melodyEmpate, noteDurationsEmpate, sizeof(melodyEmpate) / sizeof(int));
-      break;
-
-    case ESTADO_NENHUM:
-    default:
-      noTone(BUZZER_PIN);
-      digitalWrite(BUZZER_PIN, LOW);
-      break;
-  }
-}
-
-void tocarMelodia(int melody[], int noteDurations[], int totalNotes) {
-  for (int thisNote = 0; thisNote < totalNotes; thisNote++) {
-    int noteDuration = 1000 / noteDurations[thisNote];
-
-    if (melody[thisNote] == 0) {
-      // pausa
-      noTone(BUZZER_PIN);
-    } else {
-      tone(BUZZER_PIN, melody[thisNote], noteDuration);
+    switch (b) {
+      case 1: melodiaJogador1(); break;
+      case 2: melodiaJogador2(); break;
+      case 3: melodiaEmpate();   break;
+      default: /* byte desconhecido: ignora */ break;
     }
 
-    int pauseBetweenNotes = noteDuration * 1.30;
-    delay(pauseBetweenNotes);
-
-    noTone(BUZZER_PIN);
+    // Avisa o FPGA que o som terminou para ele voltar a computar.
+    fpgaSerial.write(ACK_FIM_SOM);
+    Serial.println("ACK fim de som enviado ao FPGA");
   }
 }
