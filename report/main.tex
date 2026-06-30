@@ -1,0 +1,217 @@
+\PassOptionsToPackage{hypertexnames=false}{hyperref}
+
+\documentclass[
+	12pt,
+	oneside,
+	a4paper,
+	english,
+	french,
+	spanish,
+	brazil,
+	]{abntex2}
+
+\usepackage{lmodern}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{indentfirst}
+\usepackage{graphicx}
+\usepackage{microtype}
+
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,shapes.geometric,calc}
+
+\usepackage{url}
+\usepackage[export]{adjustbox}
+\usepackage{float}
+\usepackage{enumitem}
+\usepackage{xcolor}
+
+% Citações padrão ABNT
+\usepackage[alf]{abntex2cite}
+\citebrackets()
+
+% CAPA e FOLHA DE ROSTO
+%TO DO: melhorar o nome depois
+\titulo{Integração de Periféricos de Comunicação Digital a uma Arquitetura Baseada em MIPS}
+\autor{Fernando Daniel Marcelino\\156490}
+\local{São José dos Campos - Brasil}
+\data{Junho de 2026}
+\instituicao{
+  Docente: Prof. Dr. André Marcorin de Oliveira
+  \par
+  Universidade Federal de São Paulo - UNIFESP
+  \par
+  Instituto de Ciência e Tecnologia - Campus São José dos Campos
+}
+\tipotrabalho{Relatório técnico}
+\preambulo{Relatório apresentado à Universidade Federal de São Paulo como parte dos requisitos para aprovação na disciplina de Laboratório de Sistemas Computacionais: Comunicação Digital.}
+
+% alterando o aspecto da cor azul
+\definecolor{blue}{RGB}{41,5,195}
+
+\makeatletter
+\hypersetup{
+		pdftitle={\@title},
+		pdfauthor={\@author},
+		pdfsubject={\imprimirpreambulo},
+		pdfcreator={LaTeX with abnTeX2},
+		pdfkeywords={comunicação digital}{VGA}{PS/2}{UART}{FPGA},
+		colorlinks=true,
+		linkcolor=blue,
+		citecolor=blue,
+		filecolor=magenta,
+		urlcolor=blue,
+		bookmarksdepth=4
+}
+\makeatother
+
+% Espaçamentos
+\setlength{\parindent}{1.3cm}
+\setlength{\parskip}{0.2cm}
+
+\makeindex
+
+% ------------------------------------------------
+\begin{document}
+
+\selectlanguage{brazil}
+\frenchspacing
+
+\imprimircapa
+\imprimirfolhaderosto*
+
+% RESUMO
+\setlength{\absparsep}{18pt}
+\begin{resumo}
+\par Este relatório apresenta a etapa final do planejamento e especificação do projeto integrador desenvolvido ao longo das disciplinas dos Laboratórios de Sistemas Computacionais. Nas fases anteriores foram construídos um processador, descrito pela linguagem de descrição de \emph{hardware} Verilog, um compilador para a linguagem C- e um sistema operacional reduzido; faltava conectar esse conjunto ao mundo externo. Com isso, este relatório planeja, implementa e valida três interfaces de entrada e saída sobre o kit FPGA. As novas funcionalidades são: suporte à saída de vídeo \emph{Video Graphics Array} (VGA); entrada de teclado pelo protocolo PS/2; e um canal serial assíncrono \emph{Universal Asynchronous Receiver-Transmitter} (UART), com transmissão e recepção, para comunicação com um microcontrolador Arduino Uno. Cada periférico exigiu modificações coordenadas, em diferentes partes do sistema: novas instruções e sinais no \emph{datapath} do processador, novos \emph{opcodes} e funções intrínsecas no compilador e mudanças estruturais no sistema operacional. A demonstração integrada é um jogo da velha que exibe o tabuleiro e o placar pela VGA, lê as jogadas pelo teclado PS/2 e sinaliza o vencedor a um Arduino pela UART, o qual reproduz uma melodia simples em um \emph{buzzer}. Todas as implementações foram validadas em \emph{hardware}, confirmando o funcionamento conjunto dos três periféricos.
+
+ \noindent
+ \textbf{Palavras-chave}: Comunicação Digital. Periféricos. Sistema Externo. VGA. PS/2. UART. FPGA.
+\end{resumo}
+
+% Lista de figuras
+\pdfbookmark[0]{\listfigurename}{lof}
+\listoffigures*
+\clearpage
+
+% Lista de tabelas
+\pdfbookmark[0]{\listtablename}{lot}
+\listoftables*
+\clearpage
+
+% TO DO: ao final conferir se todas as abreviações foram listadas aqui
+% Lista de nomes; colocar TODAS as abreviações!!
+\pdfbookmark[0]{\contentsname}{toc}
+\tableofcontents*
+\clearpage
+
+% ----------------------------------------------------------
+% ELEMENTOS TEXTUAIS
+\textual
+
+% ------------------------------------------------
+\chapter{Introdução}
+
+A evolução das tecnologias de comunicação há mais de um século, acompanha a própria evolução do pensamento humano sobre velocidade, distância e conexão. Esse percurso desde o Manifesto Futurista de 1909 até as teorias contemporâneas sobre a relação entre homem e máquina, mostrando como a sociedade se tornou, ao longo do século XX, cada vez mais hiperconectada, cercada por assistentes virtuais e dispositivos que, segundo o conceito de tecnologia ``transparente'' que os autores retomam, deixam de ser percebidos como tecnologia, tão entranhados ficam no cotidiano de quem os usa \cite{lopes_pernisa2022}. Essa hiperconexão, porém, não existe no vazio: por trás de cada chamada de vídeo, de cada assistente virtual e de cada \emph{gadget} conectado, há sempre um sistema concreto de comunicação trocando sinais elétricos entre dispositivos.
+
+\citeonline{lathi2012} descrevem essa mesma transição sob uma perspectiva mais técnico. Nas últimas décadas, a internet, um conceito até então restrito a técnicos e à comunidade científica, passou a permear praticamente todos os aspectos da vida cotidiana, substituindo formas antigas de transporte de mensagens, como pombos-correio e sinais de luz e fogo, por sistemas elétricos capazes de transportar sinais por distâncias muito maiores e à velocidade da luz. Apesar da diversidade desses sistemas (telefonia, redes sem fio, radiodifusão, sensores embarcados), os autores apontam que todos compartilham uma mesma estrutura lógica, descrita por um modelo geral de cinco elementos: uma fonte, que origina a mensagem; um transmissor, que adapta o sinal para uma transmissão eficiente; um canal, o meio físico por onde o sinal se propaga; um receptor, que reverte essas modificações e corrige, na medida do possível, as distorções do canal; e um destino, a quem a mensagem finalmente se dirige. Esse mesmo esqueleto (fonte, transmissor, canal, receptor, destino) reaparece, em escala reduzida, sempre que um processador troca \emph{bytes} com um periférico.
+
+Essa analogia importa porque nenhum canal é perfeito. Segundo \citeonline{lathi2012}, todo canal de comunicação se comporta, em maior ou menor grau, como um filtro: atenua o sinal, distorce as formas de onda transmitidas e acumula ruído proveniente de fontes externas e internas. Juntos, esses fatores limitam a taxa de comunicação que pode ser alcançada com confiabilidade. No projeto de qualquer sistema de comunicação, seja uma rede de telefonia, seja um simples canal serial entre um microcontrolador e um circuito digital, é esse compromisso entre distância, ruído e taxa de transmissão que orienta as escolhas de protocolo, de temporização e de codificação do sinal.
+
+É dentro dessa moldura mais ampla, que vai da hiperconexão cultural descrita por \citeonline{lopes_pernisa2022} ao modelo técnico de comunicação descrito por \citeonline{lathi2012}, que se insere o presente trabalho. Este relatório dá continuidade a um projeto desenvolvido ao longo das disciplinas de Laboratório de Sistemas Computacionais da Universidade Federal de São Paulo (UNIFESP), cujas etapas anteriores já haviam resultado em um processador descrito em Verilog, um compilador para a linguagem C- e um sistema operacional reduzido. Faltava, porém, conectar esse conjunto ao mundo externo.
+
+É exatamente essa lacuna que esta etapa do projeto busca preencher, projetando, implementando e validando três interfaces de entrada e saída sobre o kit FPGA. A primeira é a saída de vídeo no padrão \emph{Video Graphics Array} (VGA), que desenha imagens em um monitor por varredura, a partir de uma memória de vídeo (o \emph{framebuffer}) onde o processador escreve cada \emph{pixel}. A segunda é a entrada de teclado pelo protocolo PS/2, uma interface serial síncrona em que o próprio teclado gera o sinal de \emph{clock} e envia, a cada tecla pressionada, um \emph{scancode} a ser decodificado pelo sistema. A terceira é um canal serial assíncrono \emph{Universal Asynchronous Receiver-Transmitter} (UART), sem \emph{clock} compartilhado entre as pontas, usado aqui para a comunicação bidirecional com um microcontrolador Arduino Uno. Como demonstração integrada dos três periféricos, optou-se por um jogo da velha: o tabuleiro e o placar são exibidos pela VGA, as jogadas são lidas pelo teclado PS/2 e o resultado da partida é sinalizado ao Arduino pela UART, que responde tocando uma melodia em um \emph{buzzer}.
+
+O restante do relatório segue essa lógica de continuidade. O capítulo de Objetivos detalha as metas gerais e específicas desta etapa; o capítulo de Fundamentação Teórica detalha, em maior profundidade, os conceitos de comunicação serial e paralela, síncrona e assíncrona, além dos fundamentos da UART, do protocolo PS/2 e do padrão de vídeo VGA já introduzidos aqui; o capítulo de Desenvolvimento descreve, periférico a periférico, as modificações feitas no processador, no compilador e no sistema operacional; e os capítulos de Resultados e de Conclusão fecham o relatório, discutindo a validação em \emph{hardware} e os principais desafios e desdobramentos futuros do projeto.
+
+
+% --------------------------------------------------------------
+\chapter[Objetivos]{Objetivos}
+\section{Geral}
+O objetivo geral desta etapa é projetar, implementar e validar a integração de três periféricos de comunicação digital à arquitetura desenvolvida nas disciplinas anteriores. Para isso, o processador, o compilador da linguagem C- e o sistema operacional são estendidos, de modo que os programas de usuário passem a suportar a exibição de imagens em um monitor, receber comandos de um teclado e trocar \emph{bytes} com um microcontrolador externo.
+
+\section{Específico}
+Nesta seção, são enumerados os objetivos específicos definidos para esta etapa de comunicação digital.
+
+\begin{enumerate}
+	\item Estudo bibliográfico sobre:
+		\begin{enumerate}
+			\item Comunicação serial e paralela, síncrona e assíncrona;
+			\item Transmissão serial assíncrona e o funcionamento de uma UART;
+			\item Protocolo PS/2 de teclado, incluindo o formato do quadro serial e os \emph{scancodes};
+			\item Geração de sinais de vídeo no padrão VGA (varredura \emph{raster}, sincronismo e \emph{framebuffer}).
+		\end{enumerate}
+	\item Projeto e implementação dos periféricos no processador (Verilog, na placa DE2-115):
+		\begin{enumerate}
+			\item Subsistema VGA, com \emph{framebuffer} e a instrução \texttt{draw\_pixel};
+			\item Subsistema PS/2, com recepção de \emph{scancodes}, decodificação para ASCII e a instrução \texttt{get\_input\_keyboard};
+			\item Subsistema UART, com transmissão e recepção.
+		\end{enumerate}
+	\item Extensão do compilador e do sistema operacional:
+		\begin{enumerate}
+			\item Adicionar os novos opcodes e funções intrínsecas correspondentes no compilador, em \emph{lockstep} com o processador;
+			\item Integrar os periféricos ao SO e a programas de aplicação, como um jogo da velha com placar em VGA e melodia de vitória reproduzida por um Arduino via UART.
+		\end{enumerate}
+	\item Validar as implementações em \emph{hardware} na placa FPGA Terasic DE2-115.
+\end{enumerate}
+
+% --------------------------------------------------------------
+\chapter{Fundamentação Teórica}
+
+
+\section{Comunicação Serial e Paralela}
+
+\section{Comunicação Síncrona e Assíncrona}
+
+\section{Transmissão Serial Assíncrona e a UART}
+
+\section{Protocolo PS/2}
+
+\section{Padrão de Vídeo VGA}
+
+
+% --------------------------------------------------------------
+\chapter{Desenvolvimento}
+
+\section{Visão Geral das Modificações na Arquitetura}
+
+\section{Saída de Vídeo VGA}
+
+\subsection{Modificações no Processador}
+
+\subsection{Modificações no Compilador}
+
+\subsection{Uso pelos Programas}
+
+\section{Entrada de Teclado PS/2}
+
+\subsection{Modificações no Processador}
+
+\subsection{Modificações no Compilador}
+
+\subsection{Uso pelo Sistema Operacional e Aplicações}
+
+\section{Comunicação Serial UART}
+
+\subsection{Modificações no Processador}
+
+\subsection{Modificações no Compilador}
+
+\subsection{Aplicação: Handshake com o Arduino}
+
+\section{Síntese das Modificações no Compilador}
+
+\section{Síntese das Modificações no Sistema Operacional}
+
+% --------------------------------------------------------------
+\chapter{Resultados}
+
+% --------------------------------------------------------------
+\chapter{Conclusão}
+
+\phantompart
+
+% ----------------------------------------------------------
+\bibliography{referencias}
+
+\end{document}
