@@ -259,6 +259,10 @@ A terceira modificação estrutural foi a reorganização da memória de instru�
 
 \subsection{Modificações no Compilador}
 
+No compilador, o suporte na linguagem C- foi inserido diretamente como função global na tabela de símbolos. A função \texttt{draw\_pixel(pos, cor)}, de tipo \texttt{void}, chamada com a sintaxe comum de funções da linguagem, foi inicialmente declarada antes mesmo da geração da análise semântica, o que viabiliza o compilador não dar erro semântico de função não declarada para uso. O primeiro argumento é a posição do \emph{pixel}, previamente calculada pelo próprio programa em C- como $\mathit{linha} \times 80 + \mathit{coluna}$; essa decisão mantém a instrução no formato I simples do processador e deixa a aritmética de endereçamento a cargo do código de usuário, que pode encapsulá-la em funções auxiliares de desenho.
+
+Na geração de código, a chamada não produz a sequência usual de salto para função: o gerador a reconhece pelo nome e emite diretamente uma única instrução tipo I com o \emph{opcode} \texttt{0b001111}, colocando a posição no campo \texttt{rs}, cujo valor somado ao imediato nulo pela ULA forma o endereço do \emph{framebuffer}, e a cor no campo \texttt{rt}, de onde o \emph{hardware} extrai os 3 bits menos significativos, exatamente a convenção esperada pelo processador.
+
 \subsection{Uso pelos Programas}
 
 \section{Entrada de Teclado PS/2}
@@ -267,6 +271,10 @@ A terceira modificação estrutural foi a reorganização da memória de instru�
 
 \subsection{Modificações no Compilador}
 
+Da mesma forma feita a instrução do VGA, a leitura do teclado é dada pela função intrínseca \texttt{keyboard\_input()}, de tipo \texttt{int} e sem parâmetros, correspondente à instrução \texttt{get\_input\_keyboard} do processador, que devolve o código ASCII da última tecla pressionada ou \texttt{0} quando não há tecla nova. Essa forma de retorno permite escrever o laço de \emph{polling} inteiramente em C-: o programa repete a chamada até receber um valor diferente de zero e então trata a tecla.
+
+A codificação segue o padrão das instruções de leitura já existentes no processador: o gerador emite uma instrução tipo I com o \emph{opcode} \texttt{0b010111}, sem operandos de entrada (campo \texttt{rs} preenchido com o registrador \texttt{\$zero}), e o valor lido do periférico é escrito no registrador de destino indicado pelo campo \texttt{rt}, de onde o código gerado o copia para a variável do programa.
+
 \subsection{Uso pelo Sistema Operacional e Aplicações}
 
 \section{Comunicação Serial UART}
@@ -274,6 +282,10 @@ A terceira modificação estrutural foi a reorganização da memória de instru�
 \subsection{Modificações no Processador}
 
 \subsection{Modificações no Compilador}
+
+A funcionalidade da UART é mantida por quatro funções previamente inseridas na tabela de símbolos, que espelham as quatro instruções do processador: \texttt{uart\_send(byte)}, de tipo \texttt{void}, e as leitoras \texttt{uart\_tx\_ready()}, \texttt{uart\_rx\_available()} e \texttt{uart\_receive()}, de tipo \texttt{int}. O conjunto é suficiente para expressar o protocolo completo de comunicação em C-: esperar o transmissor ficar livre, enviar o \emph{byte}, aguardar a resposta do outro lado e consumi-la, tudo por laços de \emph{polling} sobre as duas funções de estado. As funções \texttt{uart\_rx\_available} e \texttt{uart\_tx\_ready} foram pensadas para que houvesse uma sincronização plena entre o kit FPGA e o Arduino Uno, implementando um \emph{handshake} entre os dois sistemas computacionais.
+
+Na codificação, \texttt{uart\_send} segue o padrão: o \emph{byte} a transmitir é carregado em um registrador temporário e emitido no campo \texttt{rs} da instrução de \emph{opcode} \texttt{0b011000}. As três leitoras (\texttt{uart\_tx\_ready}, \texttt{uart\_rx\_available} e \texttt{uart\_receive}) seguem o padrão inverso, sem operandos de entrada e com o resultado (estado do transmissor, estado do receptor ou \emph{byte} recebido) escrito no registrador de destino \texttt{rt}, sob os \emph{opcodes} \texttt{0b011011}, \texttt{0b011010} e \texttt{0b011001}, respectivamente.
 
 \subsection{Aplicação: Handshake com o Arduino}
 
