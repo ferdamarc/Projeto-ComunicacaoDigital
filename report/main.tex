@@ -277,6 +277,36 @@ A terceira modificação estrutural foi a reorganização da memória de instru�
 
 \subsection{Aplicação: Handshake com o Arduino}
 
+Do lado da FPGA, o \emph{handshake} completo está na função \texttt{send\_result} do jogo, mostrada na \autoref{fig:codigo-send-result}, que exercita as quatro intrínsecas da UART: o programa espera o transmissor ficar livre consultando \texttt{uart\_tx\_ready()}, envia um único \emph{byte} codificando o resultado da partida (1 para vitória do jogador 1, 2 para o jogador 2, 3 para empate) e então bloqueia em um laço sobre \texttt{uart\_rx\_available()} até a resposta chegar, consumindo-a com \texttt{uart\_receive()}. Esse bloqueio proposital é a sincronização entre os dois sistemas: o jogo permanece parado, com o símbolo do vencedor na tela, enquanto a melodia toca, e só oferece o reinício depois do aviso de fim de som.
+
+\begin{figure}[H]
+	\caption{Função \texttt{send\_result}: envio do resultado e espera pelo ACK via UART.}
+	\centering
+	\includegraphics[width=0.75\textwidth]{imgs/codigo-send-result.png}
+	\legend{Fonte: O autor.}
+	\label{fig:codigo-send-result}
+\end{figure}
+
+Do lado do Arduino, um \emph{sketch} dedicado usa uma porta serial emulada por \emph{software} nos mesmos 9600 bauds e formato 8N1 do módulo da FPGA. A \autoref{fig:codigo-arduino-setup} mostra a configuração, que concentra as informações do enlace: os pinos digitais 10 e 11 fazem os papéis de recepção e transmissão, ligados aos pinos de GPIO da FPGA descritos na \autoref{sec:uart_processador}, o \emph{buzzer} ocupa o pino 8 e o \emph{byte} de reconhecimento é definido como a constante \texttt{0xFF}.
+
+\begin{figure}[H]
+	\caption{Configuração do \emph{sketch} do Arduino: pinagem, \emph{baud rate} e constante de ACK.}
+	\centering
+	\includegraphics[width=0.75\textwidth]{imgs/codigo-arduino-setup.png}
+	\legend{Fonte: O autor.}
+	\label{fig:codigo-arduino-setup}
+\end{figure}
+
+O laço principal do \emph{sketch}, mostrado na \autoref{fig:codigo-arduino-loop}, aguarda o \emph{byte} do resultado, seleciona a melodia correspondente no \emph{buzzer} (ascendente para o jogador 1, descendente para o jogador 2 e dois toques curtos para empate) e, ao terminar, devolve o \emph{byte} de reconhecimento \texttt{0xFF} que libera a FPGA. Um único \emph{byte} em cada sentido foi suficiente para todo o protocolo da aplicação, ilustrando o custo mínimo de integração de um sistema externo pela UART.
+
+\begin{figure}[H]
+	\caption{Laço principal do \emph{sketch} do Arduino: recepção do resultado, melodia e ACK.}
+	\centering
+	\includegraphics[width=0.75\textwidth]{imgs/codigo-arduino-loop.png}
+	\legend{Fonte: O autor.}
+	\label{fig:codigo-arduino-loop}
+\end{figure}
+
 \section{Síntese das Modificações no Compilador}
 
 Vale destacar que nenhuma das integrações exigiu mudanças no léxico ou na gramática da linguagem C-: as seis novas operações entram como funções intrínsecas, pré-registradas na tabela de símbolos do compilador antes da análise semântica, de modo que as chamadas sejam analisadas como chamadas de funções globais comuns. A especialização acontece apenas nas duas últimas fases: o gerador de código reconhece os nomes reservados e, em vez da sequência usual de chamada com salto e retorno, emite diretamente a instrução tipo I do periférico com sua convenção de operandos, e o codificador binário mapeia cada nome ao seu \emph{opcode} de 6 bits (\autoref{tab:novas-instrucoes}).
