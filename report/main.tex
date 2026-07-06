@@ -271,6 +271,18 @@ Na geração de código, a chamada não produz a sequência usual de salto para 
 
 \subsection{Uso pelos Programas}
 
+O jogo da velha acessa o vídeo exclusivamente por meio de duas funções auxiliares escritas em C- que encapsulam a \texttt{draw\_pixel}: a \texttt{draw\_block}, mostrada na \autoref{fig:codigo-draw-block}, que preenche um retângulo de dimensões arbitrárias com dois laços aninhados calculando a posição $(y_0 + i) \times 80 + (x_0 + j)$ de cada célula, e a \texttt{clear\_area}, que apaga uma faixa horizontal pintando-a de preto. Todo o desenho de mais alto nível, como as linhas do tabuleiro, as marcações dos jogadores, o placar e o símbolo do vencedor, é composto a partir dessas duas primitivas, confirmando na prática a decisão de projeto da seção anterior: a aritmética de endereçamento fica no código de usuário, encapsulada uma única vez.
+
+\begin{figure}[H]
+	\caption{Função auxiliar \texttt{draw\_block}, que encapsula a intrínseca \texttt{draw\_pixel}.}
+	\centering
+	\includegraphics[width=0.75\textwidth]{imgs/codigo-draw-block.png}
+	\legend{Fonte: O autor.}
+	\label{fig:codigo-draw-block}
+\end{figure}
+
+A tela lógica de $80 \times 60$ células foi particionada pelo programa em duas regiões: as linhas 0 a 8 guardam o placar persistente, em que cada vitória vira um bloco colorido (vermelho para o jogador 1, verde para o jogador 2 e branco para empates), e as linhas 10 a 59 contêm o tabuleiro $3 \times 3$. A paleta de 8 cores do \emph{framebuffer} mostrou-se suficiente para o jogo inteiro. A cada nova partida, o programa apaga apenas a faixa do tabuleiro e redesenha as linhas, preservando o placar; durante a partida, cada jogada redesenha somente o bloco da célula marcada. Esses redesenhos seletivos mantêm o custo de desenho baixo mesmo com um \emph{pixel} escrito por instrução.
+
 \section{Entrada de Teclado PS/2}
 
 \subsection{Modificações no Processador}
@@ -296,6 +308,18 @@ Da mesma forma feita a instrução do VGA, a leitura do teclado é dada pela fun
 A codificação segue o padrão das instruções de leitura já existentes no processador: o gerador emite uma instrução tipo I com o \emph{opcode} \texttt{0b010111}, sem operandos de entrada (campo \texttt{rs} preenchido com o registrador \texttt{\$zero}), e o valor lido do periférico é escrito no registrador de destino indicado pelo campo \texttt{rt}, de onde o código gerado o copia para a variável do programa.
 
 \subsection{Uso pelo Sistema Operacional e Aplicações}
+
+O SO continua interagindo com o usuário pelos periféricos originais da placa (chaves e LCD); o teclado PS/2 é consumido pela aplicação. A leitura das jogadas está na função \texttt{play\_turn}, mostrada na \autoref{fig:codigo-play-turn}, que materializa o laço de \emph{polling} previsto nas seções anteriores: o programa repete \texttt{keyboard\_input()} até receber um valor diferente de zero e então traduz o código ASCII para uma célula do tabuleiro por comparações encadeadas. Os dois jogadores compartilham o mesmo teclado por zonas distintas: o jogador 1 usa as letras \texttt{Q W E / A S D / Z X C} e o jogador 2, o teclado numérico \texttt{7 8 9 / 4 5 6 / 1 2 3}, ambos dispostos como uma grade $3 \times 3$ espelhando o tabuleiro. Teclas fora da zona do jogador da vez ou jogadas em células ocupadas são simplesmente ignoradas, e o laço volta a consultar o periférico.
+
+\begin{figure}[H]
+	\caption{Função \texttt{play\_turn}: laço de \emph{polling} do teclado e validação da jogada.}
+	\centering
+	\includegraphics[width=0.75\textwidth]{imgs/codigo-play-turn.png}
+	\legend{Fonte: O autor.}
+	\label{fig:codigo-play-turn}
+\end{figure}
+
+O teclado também conduz o fluxo de reinício: ao fim de cada partida, o programa exibe no LCD a pergunta de reinício e entra em um segundo laço de \emph{polling}, aceitando apenas as teclas \texttt{1} (reiniciar) e \texttt{2} (encerrar). Vale notar que a leitura destrutiva implementada no \emph{hardware}, em que cada tecla é consumida uma única vez, garante que um toque do usuário produza exatamente um evento de jogo, mesmo com vários laços de consulta espalhados pelo programa, sem qualquer lógica adicional de filtragem em \emph{software}.
 
 \section{Comunicação Serial UART}
 
@@ -357,6 +381,12 @@ A segunda modificação foi estrutural: o novo particionamento de memória da \a
 O \emph{relocate} é o utilitário que transforma os binários compilados individualmente na imagem única de ROM consumida pelo processador. Ele mantém um catálogo dos programas do sistema, em que cada um é marcado como simples ou complexo, e monta a memória na ordem exata do particionamento: escreve primeiro o binário do SO, completando com instruções nulas até a posição 2000, depois percorre os dez \emph{slots} simples e, por fim, o \emph{slot} complexo. Em cada \emph{slot}, o utilitário verifica se o programa cabe no espaço reservado, abortando a montagem em caso de estouro, e preenche o espaço restante, inclusive de \emph{slots} vazios, com instruções nulas, o que mantém fixos os endereços-base de todos os programas. O resultado é o arquivo de inicialização da memória de instruções, carregado na ROM do processador no momento da síntese.
 
 \section{Síntese das Modificações no Sistema Operacional}
+
+Diferentemente do processador e do compilador, o SO não precisou de nenhum tratamento específico para os periféricos: como as novas instruções executam em um único ciclo e seguem o modelo de \emph{polling}, os programas de usuário as utilizam diretamente, sem chamadas de sistema ou rotinas intermediárias de \emph{driver}. As modificações no SO foram, portanto, estruturais, motivadas por dois fatores desta etapa: o crescimento do próprio SO, cujo limiar de memória dobrou de 1000 para as 2000 instruções da \autoref{fig:memoria-instrucoes}, e a necessidade de hospedar e lançar o programa complexo, o jogo da velha, que concentra o uso dos três periféricos.
+
+Para isso, as estruturas internas de gerência de processos foram estendidas para refletir o novo particionamento. O SO mantém vetores com os endereços-base das memórias de instruções e de dados de cada processo; os identificadores 1 a 10 continuam mapeando os \emph{slots} simples, e o identificador 11 passou a designar o \emph{slot} complexo, com bases inicializadas a partir de novas constantes internas que espelham as do compilador. Como a segmentação de memória já era feita por registradores de base, por meio das instruções \texttt{os\_set\_im\_base} e \texttt{os\_set\_dm\_base}, nenhum mecanismo novo foi necessário: lançar o programa complexo consiste apenas em apontar as bases para os valores do novo \emph{slot}.
+
+A porta de entrada para o jogo é um novo desdobramento no menu do modo não preemptivo: após escolhê-lo, o usuário decide entre o modo S, que executa um dos dez programas simples, e o modo C, no qual o SO fixa o processo corrente no identificador do programa complexo. Ambos reutilizam a mesma rotina de execução, que salva o contexto do SO, aponta o contador de programa e as bases para o \emph{slot} do processo e salta para ele; ao término do programa, o SO restaura as próprias bases e o contexto e retorna ao menu. O modo preemptivo permaneceu restrito aos dez programas simples, decisão coerente com o uso dos periféricos pelo jogo: executado sem preempção, ele detém o teclado, o vídeo e a UART do início ao fim da partida, sem disputa com outros processos.
 
 % --------------------------------------------------------------
 \chapter{Resultados}
