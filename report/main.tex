@@ -279,6 +279,14 @@ A terceira modificação estrutural foi a reorganização da memória de instru�
 
 \section{Síntese das Modificações no Compilador}
 
+Vale destacar que nenhuma das integrações exigiu mudanças no léxico ou na gramática da linguagem C-: as seis novas operações entram como funções intrínsecas, pré-registradas na tabela de símbolos do compilador antes da análise semântica, de modo que as chamadas sejam analisadas como chamadas de funções globais comuns. A especialização acontece apenas nas duas últimas fases: o gerador de código reconhece os nomes reservados e, em vez da sequência usual de chamada com salto e retorno, emite diretamente a instrução tipo I do periférico com sua convenção de operandos, e o codificador binário mapeia cada nome ao seu \emph{opcode} de 6 bits (\autoref{tab:novas-instrucoes}).
+
+A segunda modificação foi estrutural: o novo particionamento de memória da \autoref{fig:memoria-instrucoes} é definido no compilador por um cabeçalho de constantes compartilhado, que fixa o limiar do SO em 2000 instruções, os dez \emph{slots} simples de 300 instruções e o \emph{slot} complexo de 3192, com a memória de dados particionada de forma análoga. É desse cabeçalho que a geração de código extrai os endereços-base de cada programa, e é por ele que compilador e processador se mantêm em \emph{lockstep}: o limiar de 2000 deve valer exatamente o mesmo que a constante equivalente do processador, como discutido na \autoref{sec:visao_geral_modificacoes}.
+
+\subsection{Modificações no \emph{Relocate}}
+
+O \emph{relocate} é o utilitário que transforma os binários compilados individualmente na imagem única de ROM consumida pelo processador. Ele mantém um catálogo dos programas do sistema, em que cada um é marcado como simples ou complexo, e monta a memória na ordem exata do particionamento: escreve primeiro o binário do SO, completando com instruções nulas até a posição 2000, depois percorre os dez \emph{slots} simples e, por fim, o \emph{slot} complexo. Em cada \emph{slot}, o utilitário verifica se o programa cabe no espaço reservado, abortando a montagem em caso de estouro, e preenche o espaço restante, inclusive de \emph{slots} vazios, com instruções nulas, o que mantém fixos os endereços-base de todos os programas. O resultado é o arquivo de inicialização da memória de instruções, carregado na ROM do processador no momento da síntese.
+
 \section{Síntese das Modificações no Sistema Operacional}
 
 % --------------------------------------------------------------
