@@ -31,11 +31,10 @@
 \citebrackets()
 
 % CAPA e FOLHA DE ROSTO
-%TO DO: melhorar o nome depois
-\titulo{Integração de Periféricos de Comunicação Digital a uma Arquitetura Baseada em MIPS}
+\titulo{Integração de Periféricos VGA, PS/2 e UART a um Processador Baseado em MIPS em FPGA}
 \autor{Fernando Daniel Marcelino\\156490}
 \local{São José dos Campos - Brasil}
-\data{Junho de 2026}
+\data{Julho de 2026}
 \instituicao{
   Docente: Prof. Dr. André Marcorin de Oliveira
   \par
@@ -83,10 +82,10 @@
 % RESUMO
 \setlength{\absparsep}{18pt}
 \begin{resumo}
-\par Este relatório apresenta a etapa final do planejamento e especificação do projeto integrador desenvolvido ao longo das disciplinas dos Laboratórios de Sistemas Computacionais. Nas fases anteriores foram construídos um processador, descrito pela linguagem de descrição de \emph{hardware} Verilog, um compilador para a linguagem C- e um sistema operacional reduzido; faltava conectar esse conjunto ao mundo externo. Com isso, este relatório planeja, implementa e valida três interfaces de entrada e saída sobre o kit FPGA. As novas funcionalidades são: suporte à saída de vídeo \emph{Video Graphics Array} (VGA); entrada de teclado pelo protocolo PS/2; e um canal serial assíncrono \emph{Universal Asynchronous Receiver-Transmitter} (UART), com transmissão e recepção, para comunicação com um microcontrolador Arduino Uno. Cada periférico exigiu modificações coordenadas, em diferentes partes do sistema: novas instruções e sinais no \emph{datapath} do processador, novos \emph{opcodes} e funções intrínsecas no compilador e mudanças estruturais no sistema operacional. A demonstração integrada é um jogo da velha que exibe o tabuleiro e o placar pela VGA, lê as jogadas pelo teclado PS/2 e sinaliza o vencedor a um Arduino pela UART, o qual reproduz uma melodia simples em um \emph{buzzer}. Todas as implementações foram validadas em \emph{hardware}, confirmando o funcionamento conjunto dos três periféricos.
+\par Este relatório apresenta a etapa final do projeto integrador desenvolvido ao longo das disciplinas dos Laboratórios de Sistemas Computacionais. Nas fases anteriores foram construídos um processador, descrito pela linguagem de descrição de \emph{hardware} Verilog, um compilador para a linguagem C- e um sistema operacional reduzido; faltava conectar esse conjunto ao mundo externo. Para preencher essa lacuna, este relatório descreve o projeto, a implementação e a validação de três interfaces de entrada e saída sobre o kit FPGA Terasic DE2-115. As novas funcionalidades são: suporte à saída de vídeo \emph{Video Graphics Array} (VGA); entrada de teclado pelo protocolo PS/2; e um canal serial assíncrono \emph{Universal Asynchronous Receiver-Transmitter} (UART), com transmissão e recepção, para comunicação com um microcontrolador Arduino Uno. Cada periférico exigiu modificações coordenadas em diferentes partes do sistema: novas instruções e sinais no \emph{datapath} do processador, novos \emph{opcodes} e funções intrínsecas no compilador e mudanças estruturais no sistema operacional. A demonstração integrada é um jogo da velha que exibe o tabuleiro e o placar pela VGA, lê as jogadas pelo teclado PS/2 e sinaliza o vencedor a um Arduino Uno pela UART, o qual reproduz uma melodia simples em um \emph{buzzer}. Todas as implementações foram validadas em \emph{hardware}, confirmando o funcionamento conjunto dos três periféricos.
 
  \noindent
- \textbf{Palavras-chave}: Comunicação Digital. Periféricos. Sistema Externo. VGA. PS/2. UART. FPGA.
+ \textbf{Palavras-chave}: Comunicação Digital. Periféricos. Arduino. VGA. PS/2. UART. FPGA.
 \end{resumo}
 
 % Lista de figuras
@@ -99,8 +98,33 @@
 \listoftables*
 \clearpage
 
-% TO DO: ao final conferir se todas as abreviações foram listadas aqui
-% Lista de nomes; colocar TODAS as abreviações!!
+% Lista de abreviaturas e siglas
+\begin{siglas}
+	\item[ACK] \emph{Acknowledgement} (Confirmação de Recebimento)
+	\item[ASCII] \emph{American Standard Code for Information Interchange}
+	\item[CRT] \emph{Cathode Ray Tube} (Tubo de Raios Catódicos)
+	\item[FPGA] \emph{Field-Programmable Gate Array}
+	\item[GPIO] \emph{General-Purpose Input/Output} (Entrada/Saída de Propósito Geral)
+	\item[HSYNC] \emph{Horizontal Synchronization} (Sincronismo Horizontal)
+	\item[IDE] \emph{Integrated Development Environment} (Ambiente de Desenvolvimento Integrado)
+	\item[LCD] \emph{Liquid Crystal Display} (Tela de Cristal Líquido)
+	\item[MI] Memória de Instruções
+	\item[MIPS] \emph{Microprocessor without Interlocked Pipeline Stages}
+	\item[MUX] Multiplexador
+	\item[PS/2] \emph{Personal System/2}
+	\item[RAM] \emph{Random Access Memory} (Memória de Acesso Aleatório)
+	\item[ROM] \emph{Read-Only Memory} (Memória Somente de Leitura)
+	\item[SO] Sistema Operacional
+	\item[UART] \emph{Universal Asynchronous Receiver-Transmitter} (Receptor-Transmissor Assíncrono Universal)
+	\item[ULA] Unidade Lógica e Aritmética
+	\item[UNIFESP] Universidade Federal de São Paulo
+	\item[USART] \emph{Universal Synchronous Asynchronous Receiver-Transmitter} (Receptor-Transmissor Síncrono/Assíncrono Universal)
+	\item[USB] \emph{Universal Serial Bus} (Barramento Serial Universal)
+	\item[VGA] \emph{Video Graphics Array}
+	\item[VSYNC] \emph{Vertical Synchronization} (Sincronismo Vertical)
+\end{siglas}
+\clearpage
+
 \pdfbookmark[0]{\contentsname}{toc}
 \tableofcontents*
 \clearpage
@@ -112,25 +136,25 @@
 % ------------------------------------------------
 \chapter{Introdução}
 
-A evolução das tecnologias de comunicação há mais de um século, acompanha a própria evolução do pensamento humano sobre velocidade, distância e conexão. Esse percurso desde o Manifesto Futurista de 1909 até as teorias contemporâneas sobre a relação entre homem e máquina, mostrando como a sociedade se tornou, ao longo do século XX, cada vez mais hiperconectada, cercada por assistentes virtuais e dispositivos que, segundo o conceito de tecnologia ``transparente'' que os autores retomam, deixam de ser percebidos como tecnologia, tão entranhados ficam no cotidiano de quem os usa \cite{lopes_pernisa2022}. Essa hiperconexão, porém, não existe no vazio: por trás de cada chamada de vídeo, de cada assistente virtual e de cada \emph{gadget} conectado, há sempre um sistema concreto de comunicação trocando sinais elétricos entre dispositivos.
+Há mais de um século, o desenvolvimento das tecnologias de comunicação acompanha a forma como o pensamento humano encara velocidade, distância e conexão. O percurso que vai do Manifesto Futurista de 1909 às teorias contemporâneas sobre a relação entre homem e máquina revela uma sociedade que se tornou, ao longo do século XX, cada vez mais hiperconectada, cercada por assistentes virtuais e por dispositivos que, de tão entranhados no cotidiano de quem os usa, deixam de ser percebidos como tecnologia, no sentido da tecnologia ``transparente'' \cite{lopes_pernisa2022}. Essa hiperconexão, porém, não existe no vazio. Por trás de cada chamada de vídeo, de cada assistente virtual e de cada \emph{gadget} conectado, há sempre um sistema concreto de comunicação trocando sinais elétricos entre dispositivos.
 
-\citeonline{lathi2012} descrevem essa mesma transição sob uma perspectiva mais técnico. Nas últimas décadas, a internet, um conceito até então restrito a técnicos e à comunidade científica, passou a permear praticamente todos os aspectos da vida cotidiana, substituindo formas antigas de transporte de mensagens, como pombos-correio e sinais de luz e fogo, por sistemas elétricos capazes de transportar sinais por distâncias muito maiores e à velocidade da luz. Apesar da diversidade desses sistemas (telefonia, redes sem fio, radiodifusão, sensores embarcados), os autores apontam que todos compartilham uma mesma estrutura lógica, descrita por um modelo geral de cinco elementos: uma fonte, que origina a mensagem; um transmissor, que adapta o sinal para uma transmissão eficiente; um canal, o meio físico por onde o sinal se propaga; um receptor, que reverte essas modificações e corrige, na medida do possível, as distorções do canal; e um destino, a quem a mensagem finalmente se dirige. Esse mesmo esqueleto (fonte, transmissor, canal, receptor, destino) reaparece, em escala reduzida, sempre que um processador troca \emph{bytes} com um periférico.
+\citeonline{lathi2012} descrevem essa mesma transição sob uma perspectiva mais técnica. Em poucas décadas, a internet passou a permear praticamente todos os aspectos da vida cotidiana, substituindo meios antigos de transporte de mensagens, dos pombos-correio aos sinais de luz e fogo, por sistemas elétricos capazes de levar sinais muito mais longe, à velocidade da luz. Os sistemas resultantes são diversos: telefonia, redes sem fio, radiodifusão, sensores embarcados. Ainda assim, os autores apontam que todos compartilham uma mesma estrutura lógica, resumida em um modelo de cinco elementos. Uma fonte origina a mensagem; um transmissor adapta o sinal para uma transmissão eficiente; um canal serve de meio físico à propagação; um receptor desfaz essas modificações e corrige, na medida do possível, as distorções acumuladas; e um destino recebe, enfim, a mensagem. É esse mesmo esqueleto (fonte, transmissor, canal, receptor, destino) que reaparece, em escala reduzida, sempre que um processador troca \emph{bytes} com um periférico.
 
 Essa analogia importa porque nenhum canal é perfeito. Segundo \citeonline{lathi2012}, todo canal de comunicação se comporta, em maior ou menor grau, como um filtro: atenua o sinal, distorce as formas de onda transmitidas e acumula ruído proveniente de fontes externas e internas. Juntos, esses fatores limitam a taxa de comunicação que pode ser alcançada com confiabilidade. No projeto de qualquer sistema de comunicação, seja uma rede de telefonia, seja um simples canal serial entre um microcontrolador e um circuito digital, é esse compromisso entre distância, ruído e taxa de transmissão que orienta as escolhas de protocolo, de temporização e de codificação do sinal.
 
-É dentro dessa moldura mais ampla, que vai da hiperconexão cultural descrita por \citeonline{lopes_pernisa2022} ao modelo técnico de comunicação descrito por \citeonline{lathi2012}, que se insere o presente trabalho. Este relatório dá continuidade a um projeto desenvolvido ao longo das disciplinas de Laboratório de Sistemas Computacionais da Universidade Federal de São Paulo (UNIFESP), cujas etapas anteriores já haviam resultado em um processador descrito em Verilog, um compilador para a linguagem C- e um sistema operacional reduzido. Faltava, porém, conectar esse conjunto ao mundo externo.
+É dentro dessa moldura mais ampla, que vai da hiperconexão cultural descrita por \citeonline{lopes_pernisa2022} ao modelo técnico de comunicação descrito por \citeonline{lathi2012}, que se insere o presente trabalho. Este relatório dá continuidade a um projeto desenvolvido ao longo das disciplinas de Laboratório de Sistemas Computacionais da Universidade Federal de São Paulo (UNIFESP), cujas etapas anteriores já haviam resultado em um processador descrito em Verilog, um compilador para a linguagem C- e um sistema operacional (SO) reduzido. Faltava, porém, conectar esse conjunto ao mundo externo. Essa conexão é fundamental: na organização clássica de um computador, a entrada e a saída figuram, ao lado da memória, do caminho de dados e do controle, entre os cinco componentes fundamentais da máquina, sendo justamente os que permitem a ela interagir com usuários e com outros sistemas \cite{patterson2017}.
 
-É exatamente essa lacuna que esta etapa do projeto busca preencher, projetando, implementando e validando três interfaces de entrada e saída sobre o kit FPGA. A primeira é a saída de vídeo no padrão \emph{Video Graphics Array} (VGA), que desenha imagens em um monitor por varredura, a partir de uma memória de vídeo (o \emph{framebuffer}) onde o processador escreve cada \emph{pixel}. A segunda é a entrada de teclado pelo protocolo PS/2, uma interface serial síncrona em que o próprio teclado gera o sinal de \emph{clock} e envia, a cada tecla pressionada, um \emph{scancode} a ser decodificado pelo sistema. A terceira é um canal serial assíncrono \emph{Universal Asynchronous Receiver-Transmitter} (UART), sem \emph{clock} compartilhado entre as pontas, usado aqui para a comunicação bidirecional com um microcontrolador Arduino Uno. Como demonstração integrada dos três periféricos, optou-se por um jogo da velha: o tabuleiro e o placar são exibidos pela VGA, as jogadas são lidas pelo teclado PS/2 e o resultado da partida é sinalizado ao Arduino pela UART, que responde tocando uma melodia em um \emph{buzzer}.
+É exatamente essa lacuna que esta etapa do projeto busca preencher, projetando, implementando e validando três interfaces de entrada e saída sobre o kit FPGA Terasic DE2-115. A primeira é a saída de vídeo no padrão \emph{Video Graphics Array} (VGA), que desenha imagens em um monitor por varredura, a partir de uma memória de vídeo (o \emph{framebuffer}) onde o processador escreve cada \emph{pixel}. A segunda é a entrada de teclado pelo protocolo PS/2, uma interface serial síncrona em que o próprio teclado gera o sinal de \emph{clock} e envia, a cada tecla pressionada, um \emph{scancode} a ser decodificado pelo sistema. A terceira é um canal serial assíncrono \emph{Universal Asynchronous Receiver-Transmitter} (UART), sem \emph{clock} compartilhado entre as pontas, usado aqui para a comunicação bidirecional com um microcontrolador Arduino Uno. Como demonstração integrada dos três periféricos, optou-se por um jogo da velha: o tabuleiro e o placar são exibidos pela VGA, as jogadas são lidas pelo teclado PS/2 e o resultado da partida é sinalizado ao Arduino Uno pela UART, que responde tocando uma melodia em um \emph{buzzer}.
 
-O restante do relatório segue essa lógica de continuidade. O capítulo de Objetivos detalha as metas gerais e específicas desta etapa; o capítulo de Fundamentação Teórica detalha, em maior profundidade, os conceitos de comunicação serial e paralela, síncrona e assíncrona, além dos fundamentos da UART, do protocolo PS/2 e do padrão de vídeo VGA já introduzidos aqui; o capítulo de Desenvolvimento descreve, periférico a periférico, as modificações feitas no processador, no compilador e no sistema operacional; e os capítulos de Resultados e de Conclusão fecham o relatório, discutindo a validação em \emph{hardware} e os principais desafios e desdobramentos futuros do projeto.
+O restante do relatório segue essa lógica de continuidade. O capítulo de Objetivos detalha as metas gerais e específicas desta etapa; o capítulo de Fundamentação Teórica detalha, em maior profundidade, os conceitos de comunicação serial e paralela, síncrona e assíncrona, além dos fundamentos da UART, do protocolo PS/2 e do padrão de vídeo VGA já introduzidos aqui; o capítulo de Desenvolvimento descreve, periférico a periférico, as modificações feitas no processador, no compilador e no SO; e os capítulos de Resultados e de Conclusão fecham o relatório, discutindo a validação em \emph{hardware} e os principais desafios e desdobramentos futuros do projeto.
 
 
 % --------------------------------------------------------------
 \chapter[Objetivos]{Objetivos}
 \section{Geral}
-O objetivo geral desta etapa é projetar, implementar e validar a integração de três periféricos de comunicação digital à arquitetura desenvolvida nas disciplinas anteriores. Para isso, o processador, o compilador da linguagem C- e o sistema operacional são estendidos, de modo que os programas de usuário passem a suportar a exibição de imagens em um monitor, receber comandos de um teclado e trocar \emph{bytes} com um microcontrolador externo.
+O objetivo geral desta etapa é projetar, implementar e validar a integração de três periféricos de comunicação digital à arquitetura desenvolvida nas disciplinas anteriores. Para isso, o processador, o compilador da linguagem C- e o SO são estendidos, de modo que os programas de usuário passem a suportar a exibição de imagens em um monitor, receber comandos de um teclado e trocar \emph{bytes} com um microcontrolador externo.
 
-\section{Específico}
+\section{Específicos}
 Nesta seção, são enumerados os objetivos específicos definidos para esta etapa de comunicação digital.
 
 \begin{enumerate}
@@ -147,10 +171,10 @@ Nesta seção, são enumerados os objetivos específicos definidos para esta eta
 			\item Subsistema PS/2, com recepção de \emph{scancodes}, decodificação para ASCII e a instrução \texttt{get\_input\_keyboard};
 			\item Subsistema UART, com transmissão e recepção.
 		\end{enumerate}
-	\item Extensão do compilador e do sistema operacional:
+	\item Extensão do compilador e do SO:
 		\begin{enumerate}
-			\item Adicionar os novos opcodes e funções intrínsecas correspondentes no compilador, em \emph{lockstep} com o processador;
-			\item Integrar os periféricos ao SO e a programas de aplicação, como um jogo da velha com placar em VGA e melodia de vitória reproduzida por um Arduino via UART.
+			\item Adicionar os novos \emph{opcodes} e funções intrínsecas correspondentes no compilador, em \emph{lockstep} com o processador;
+			\item Integrar os periféricos ao SO e a programas de aplicação, como um jogo da velha com placar em VGA e melodia de fim de partida reproduzida por um Arduino Uno via UART.
 		\end{enumerate}
 	\item Validar as implementações em \emph{hardware} na placa FPGA Terasic DE2-115.
 \end{enumerate}
@@ -161,70 +185,383 @@ Nesta seção, são enumerados os objetivos específicos definidos para esta eta
 
 \section{Comunicação Serial e Paralela}
 \label{sec:comunicacao_serial_paralela}
-A escolha por sinais digitais em vez de sinais analógicos não é arbitrária: segundo \citeonline{lathi2012}, a maior imunidade ao ruído está entre as principais razões para essa preferência. Uma mensagem digital é construída a partir de um alfabeto finito de símbolos, no caso binário apenas dois níveis, geralmente rotulados 0 e 1, de modo que o receptor precisa apenas escolher entre um número limitado de possibilidades a cada instante de amostragem. Essa margem de decisão torna o sistema tolerante a distorção e ruído, desde que ambos permaneçam dentro de certos limites. Em um sinal analógico, por outro lado, a própria forma de onda carrega a informação, de modo que qualquer desvio já representa alguma perda. Além disso, sinais digitais são factíveis de serem recuperados por técnicas matemáticas.
+A escolha por sinais digitais em vez de sinais analógicos não é arbitrária: segundo \citeonline{lathi2012}, a maior imunidade ao ruído está entre as principais razões para essa preferência. Uma mensagem digital é construída a partir de um alfabeto finito de símbolos, no caso binário apenas dois níveis, geralmente rotulados 0 e 1, de modo que o receptor precisa apenas escolher entre um número limitado de possibilidades a cada instante de amostragem. Essa margem de decisão torna o sistema tolerante a distorção e ruído, desde que ambos permaneçam dentro de certos limites. Em um sinal analógico, por outro lado, a própria forma de onda carrega a informação, de modo que qualquer desvio já representa alguma perda. Além disso, sinais digitais podem ser regenerados por técnicas matemáticas.
 
-É esse princípio, alfabeto finito, decisão binária e uma possível regeneração de sinal, que sustenta tanto a comunicação paralela quanto a serial. Na comunicação paralela, múltiplos bits de uma mesma palavra trafegam simultaneamente, cada um por uma linha física dedicada, o que favorece taxas de transferência elevadas em distâncias curtas. O custo dessa velocidade cresce com a distância, pois linhas paralelas precisam chegar ao destino em um mesmo tempo, além de exigir mais pinos e barramentos. Já na comunicação serial, os bits de uma mesma palavra são transmitidos sequencialmente, um após o outro, por um único canal (ou por um par de linhas, uma para cada sentido), o que reduz drasticamente o número de pinos e elimina o problema de \emph{skew} (efeito de atraso entre diferentes \emph{clocks}), ao custo de exigir vários períodos de \emph{clock} para transmitir a mesma palavra que a versão paralela enviaria em um único pulso.
+É esse princípio (alfabeto finito, decisão binária e uma possível regeneração de sinal) que sustenta tanto a comunicação paralela quanto a serial. Na comunicação paralela, múltiplos bits de uma mesma palavra trafegam simultaneamente, cada um por uma linha física dedicada, o que favorece taxas de transferência elevadas em distâncias curtas. O custo dessa velocidade cresce com a distância, pois linhas paralelas precisam chegar ao destino em um mesmo tempo, além de exigir mais pinos e barramentos. Já na comunicação serial, os bits de uma mesma palavra são transmitidos sequencialmente, um após o outro, por um único canal (ou por um par de linhas, uma para cada sentido), o que reduz drasticamente o número de pinos e elimina o problema de \emph{skew} (efeito de atraso entre diferentes \emph{clocks}), ao custo de exigir vários períodos de \emph{clock} para transmitir a mesma palavra que a versão paralela enviaria em um único pulso.
 
-Por essa razão, barramentos internos de alta largura, como os que ligam memória e registradores dentro do processador, costumam ser paralelos, enquanto conexões externas, como as que ligam a FPGA a um teclado ou a um microcontrolador externo, tendem a ser seriais. Essa divisão, porém, não elimina o problema de como organizar bits no tempo: falta ainda decidir se os dois lados de uma comunicação compartilham uma mesma referência temporal para saber exatamente quando cada bit deve ser lido. É essa segunda distinção, comunicação síncrona e assíncrona, que mostra-se decisiva para diferenciar os dois periféricos seriais tratados neste projeto: o teclado PS/2 e o canal UART.
+Por essa razão, barramentos internos de alta largura, como os que ligam memória e registradores dentro do processador, costumam ser paralelos, enquanto conexões externas, como as que ligam a FPGA a um teclado ou a um microcontrolador externo, tendem a ser seriais. Essa divisão, porém, não elimina o problema de como organizar bits no tempo: falta ainda decidir se os dois lados de uma comunicação compartilham uma mesma referência temporal para saber exatamente quando cada bit deve ser lido. É essa segunda distinção, comunicação síncrona e assíncrona, que se mostra decisiva para diferenciar os dois periféricos seriais tratados neste projeto: o teclado PS/2 e o canal UART.
 
 \section{Comunicação Síncrona e Assíncrona}
 \label{sec:comunicacao_sincrona_assincrona}
-Comunicação síncrona é aquela em que transmissor e receptor compartilham uma mesma referência de tempo, um sinal de \emph{clock} comum, gerado por um dos lados ou por ambos a partir da mesma fonte, de modo que cada bit é amostrado exatamente no instante esperado. Na comunicação assíncrona, esse compartilhamento não existe: cada ponta opera com seu próprio oscilador, e a sincronização precisa ser reconstruída a cada quadro, geralmente por meio de marcadores explícitos de início e fim de transmissão. À título de exemplo, na comunicação assíncrona UART, convenciona-se desses bits serem chamados de \emph{start} e \emph{end} bits.
+Na comunicação síncrona, transmissor e receptor compartilham uma mesma referência de tempo: um sinal de \emph{clock} comum, gerado por um dos lados ou derivado por ambos de uma mesma fonte, garante que cada bit seja amostrado exatamente no instante esperado. Na comunicação assíncrona, esse compartilhamento não existe. Cada ponta opera com seu próprio oscilador, e a sincronização precisa ser reconstruída a cada quadro, em geral por meio de marcadores explícitos de início e fim de transmissão. Na UART, por exemplo, convenciona-se chamar esses marcadores de bits de \emph{start} e de \emph{stop}.
 
-Essa distinção, no entanto, raramente é tão limpa quanto parece à primeira vista. \citeonline{lathi2012} mostram, a propósito da multiplexação de canais telefônicos, que mesmo sistemas projetados para operar de forma síncrona dificilmente mantêm um sincronismo perfeito entre suas pontas. Um cabo de mil quilômetros, por exemplo, pode ter sua velocidade de propagação alterada por uma variação de meio grau Celsius na temperatura do meio; o efeito prático é que os pulsos chegam um pouco mais cedo ou mais tarde do que o previsto, obrigando o receptor a armazená-los temporariamente ou a completar janelas vazias com bits de preenchimento, processo que os autores chamam de justificação, até que a taxa nominal seja reestabelecida. Esses efeitos são naturais mas podem ser controlados por métodos/algoritmos de recepção ou na demodulação.
+Essa distinção, no entanto, raramente é tão limpa quanto parece à primeira vista. \citeonline{lathi2012} mostram, a propósito da multiplexação de canais telefônicos, que mesmo sistemas projetados para operar de forma síncrona dificilmente mantêm um sincronismo perfeito entre suas pontas. Um cabo de mil quilômetros, por exemplo, pode ter sua velocidade de propagação alterada por uma variação de meio grau Celsius na temperatura do meio; o efeito prático é que os pulsos chegam um pouco mais cedo ou mais tarde do que o previsto, obrigando o receptor a armazená-los temporariamente ou a completar janelas vazias com bits de preenchimento, processo que os autores chamam de justificação, até que a taxa nominal seja restabelecida. Esses efeitos são naturais mas podem ser controlados por métodos/algoritmos de recepção ou na demodulação.
 
-Essa constatação é útil para o projeto descrito neste relatório porque mostra que síncrono e assíncrono não são duas decisões fixas, mas os extremos dos conceitos. Os dois periféricos seriais tratados nas próximas seções ocupam posições bem definidas, e bem mais simples, nesse caso: o PS/2 é majoritariamente síncrono, já que o próprio teclado gera o sinal de \emph{clock} que acompanha cada bit de dado, dispensando qualquer outra fonte ou mesmo estimativa de \emph{clock}; a UART, por sua vez, é francamente assíncrona, pois não há \emph{clock} compartilhado entre as pontas, e cada lado precisa concordar previamente com o (\emph{baud rate}) para que a amostragem ocorra no instante correto dentro de cada bit.
+Essa constatação é útil para o projeto descrito neste relatório porque mostra que síncrono e assíncrono não são duas decisões fixas, mas extremos de um mesmo conceito sobre sincronismo. Os dois periféricos seriais tratados nas próximas seções ocupam posições bem definidas, e bem mais simples, nesse sincronismo: o PS/2 é majoritariamente síncrono, já que o próprio teclado gera o sinal de \emph{clock} que acompanha cada bit de dado, dispensando qualquer outra fonte ou mesmo estimativa de \emph{clock}; a UART, por sua vez, é francamente assíncrona, pois não há \emph{clock} compartilhado entre as pontas, e cada lado precisa concordar previamente com a taxa de transmissão (\emph{baud rate}) para que a amostragem ocorra no instante correto dentro de cada bit.
 
 \section{Transmissão Serial Assíncrona e a UART}
 \label{sec:transmissao_serial_assincrona}
+A seção anterior deixou um problema em aberto: na ausência de um \emph{clock} compartilhado, o receptor precisa determinar por conta própria o instante em que cada bit começa e termina. A solução clássica combina dois acordos firmados antes de qualquer transmissão. O primeiro é uma taxa de sinalização fixa, o \emph{baud rate}, que define a duração nominal de cada bit e deve ser configurada com o mesmo valor nas duas pontas, o que exige temporização precisa em cada lado \cite{microchip_tb3216}. O segundo é um formato de quadro com marcadores explícitos de início e de fim, que permite ao receptor se realinhar a cada nova palavra transmitida. O circuito que implementa esse esquema é a UART (\emph{Universal Asynchronous Receiver-Transmitter}), presente, sob alguma forma, em praticamente todo microcontrolador e computador que precise de um canal serial simples. Em microcontroladores modernos, o módulo aparece com frequência na forma estendida USART (\emph{Universal Synchronous Asynchronous Receiver-Transmitter}), que oferece também um modo síncrono com linha dedicada de \emph{clock}; é o modo assíncrono de dois fios, capaz de comunicação \emph{full-duplex}, que caracteriza a UART propriamente dita \cite{microchip_tb3216}.
+
+O quadro da UART tem uma anatomia bem definida. Em repouso, a linha permanece em nível lógico alto. A transmissão começa com o bit de \emph{start}, uma transição para o nível baixo mantida pela duração de um bit, que avisa o receptor de que um quadro se iniciou. Seguem-se os bits de dados, tipicamente oito, transmitidos do menos significativo para o mais significativo, e, opcionalmente, um bit de paridade para detecção de erros simples. O quadro se encerra com um ou mais bits de \emph{stop} em nível alto, que devolvem a linha à condição de repouso e garantem um intervalo mínimo antes do próximo quadro. A configuração usada neste projeto é a mais comum na prática \cite{microchip_tb3216}, abreviada como 8N1: oito bits de dados, nenhuma paridade e um bit de \emph{stop}, totalizando dez bits transmitidos para cada \emph{byte} útil, de modo que a taxa efetiva de caracteres é um décimo do \emph{baud rate}. Entre as taxas usuais, que vão de 1200 a 115200 bauds, a de 9600, adotada neste projeto, é a mais utilizada \cite{microchip_tb3216}.
+
+O ponto delicado do esquema está na amostragem. Ao detectar a borda de descida do bit de \emph{start}, o receptor dispara um contador interno calibrado pelo \emph{baud rate} acordado e passa a amostrar a linha no centro do intervalo nominal de cada bit, região em que o valor lógico está mais estável e distante das transições. Implementações típicas refinam essa localização por sobre-amostragem, observando a linha a uma taxa múltipla da taxa de bits, dezesseis vezes por bit no modo padrão dos microcontroladores AVR \cite{microchip_tb3216}, para encontrar o meio do bit com boa precisão. Como a sincronização é refeita no início de cada quadro, eventuais diferenças de frequência entre os osciladores das duas pontas não se acumulam por mais de dez bits consecutivos, e essa janela curta de acúmulo é o que torna o método robusto: basta que o desvio relativo entre os dois \emph{clocks} seja pequeno o suficiente para que a última amostra do quadro ainda caia dentro do bit correto.
+
+Essas características fizeram da UART a escolha natural para o enlace entre a FPGA e o Arduino Uno neste projeto. São dois sistemas com osciladores completamente independentes, de 50 MHz na placa DE2-115 e de 16 MHz no microcontrolador, e nenhuma linha de \emph{clock} em comum; ainda assim, dois fios bastam, um para cada sentido de transmissão, desde que ambos os lados operem no mesmo \emph{baud rate}. Além disso, o Arduino Uno oferece suporte nativo ao protocolo, o que simplifica o \emph{firmware} da ponta receptora. O modelo de uso do periférico também segue a prática consolidada nos microcontroladores comerciais: a aplicação sincroniza o fluxo de dados consultando \emph{flags} de estado do módulo, como as que indicam transmissor livre e recepção concluída \cite{microchip_tb3216}, modelo de \emph{polling} que este projeto reproduz nas instruções de estado da UART descritas no capítulo de Desenvolvimento. A próxima seção apresenta um protocolo serial de estrutura de quadro bastante parecida, mas que resolve o problema da sincronização pelo caminho oposto: em vez de dispensar o \emph{clock} e acordar uma taxa, o PS/2 envia o \emph{clock} junto com os dados.
 
 \section{Protocolo PS/2}
+\label{sec:protocolo_ps2}
+O PS/2 é uma interface serial síncrona e bidirecional de dois fios, um de dados e um de \emph{clock}, historicamente usada para conectar teclados e \emph{mouses} a computadores pessoais. Segundo \citeonline{chapweske_ps2}, as duas linhas são do tipo coletor aberto, mantidas em nível alto por resistores de \emph{pull-up}, e o barramento só é considerado ocioso quando ambas estão em nível alto, única condição em que o dispositivo pode iniciar uma transmissão. A particularidade mais importante do protocolo está em quem comanda a temporização: é sempre o dispositivo, e não o computador, que gera o sinal de \emph{clock}, em uma frequência entre 10 kHz e 16,7 kHz \cite{chapweske_ps2}. Ainda assim, o controle último da comunicação pertence ao computador, que pode inibi-la a qualquer momento mantendo a linha de \emph{clock} em nível baixo. Para o receptor, esse arranjo elimina qualquer necessidade de estimar taxas ou de localizar o centro de cada bit, como faz a UART: basta amostrar a linha de dados a cada borda de descida do \emph{clock}, instante em que o dado enviado pelo teclado está garantidamente estável \cite{chapweske_ps2}. É o mesmo problema da seção anterior resolvido pela via oposta, com um fio a mais em troca de nenhum acordo prévio de taxa.
+
+Na comunicação do dispositivo para o computador, cada \emph{byte} é transmitido em um quadro de onze bits: um bit de \emph{start}, sempre em nível baixo; oito bits de dados, do menos significativo para o mais significativo; um bit de paridade ímpar; e um bit de \emph{stop}, sempre em nível alto \cite{chapweske_ps2}. A semelhança com o quadro da UART não é coincidência, já que ambos delimitam um \emph{byte} em um fluxo serial; a diferença essencial é que, no PS/2, cada bit é validado por uma borda do \emph{clock} gerado pelo dispositivo, enquanto na UART essa validação depende do contador interno do receptor. A paridade ímpar acrescenta uma verificação simples de integridade: o número de bits em nível 1, somando os oito bits de dados e o próprio bit de paridade, deve ser sempre ímpar, e um quadro que viole essa regra deve ser tratado como erro de recepção \cite{chapweske_ps2}. Na placa DE2-115, essas duas linhas do conector PS/2 chegam diretamente a pinos da FPGA, como os sinais \texttt{PS2\_CLK} e \texttt{PS2\_DAT} \cite{ManualFPGA}, de modo que toda a lógica de recepção do quadro precisa ser descrita em \emph{hardware} pelo projetista.
+
+O conteúdo transportado pelos quadros não são caracteres, e sim \emph{scancodes}: códigos numéricos que identificam cada tecla física do teclado. \citeonline{chapweske_ps2} descreve dois tipos de código: o \emph{make code}, enviado quando a tecla é pressionada ou mantida pressionada, e o \emph{break code}, enviado quando ela é solta. No conjunto de códigos padrão dos teclados modernos (o \emph{scan code set} 2), a maioria dos \emph{break codes} é formada pelo prefixo \texttt{0xF0} seguido do próprio \emph{make code} da tecla, e teclas estendidas, como as setas direcionais, acrescentam ainda o prefixo \texttt{0xE0} a ambos os eventos. Além disso, uma tecla mantida pressionada se torna \emph{typematic}: seu \emph{make code} passa a ser reenviado em intervalos regulares até que a tecla seja solta ou outra seja pressionada \cite{chapweske_ps2}. Na prática, portanto, um único toque do usuário produz múltiplos \emph{bytes} na interface, e cabe ao sistema receptor filtrar os eventos de \emph{break} e as repetições para não registrar a mesma tecla em duplicidade.
+
+Resta ainda uma última etapa de tradução. Como destaca \citeonline{chapweske_ps2}, o \emph{make code} representa apenas uma tecla do teclado, sem relação definida com o código ASCII do caractere impresso nela, e cabe ao sistema receptor fazer essa conversão, tipicamente por meio de uma tabela. Neste projeto, toda essa cadeia de recepção do quadro, verificação de paridade, filtragem dos eventos de \emph{break} e tradução para ASCII é implementada em \emph{hardware}, no subsistema PS/2 do processador, e seu resultado é exposto aos programas pela instrução \texttt{get\_input\_keyboard}. É por esse caminho que as jogadas do jogo da velha, digitadas pelo usuário, chegam à aplicação, como detalha o capítulo de Desenvolvimento.
 
 \section{Padrão de Vídeo VGA}
+\label{sec:padrao_vga}
+O VGA (\emph{Video Graphics Array}) é um padrão de vídeo baseado em varredura \emph{raster}. Como descreve \citeonline{ickes_vga}, o sinal de vídeo é um fluxo contínuo de quadros; cada quadro se compõe de uma série de linhas horizontais, e cada linha, de uma série de \emph{pixels}. As linhas são transmitidas em ordem, de cima para baixo, sem entrelaçamento; os \emph{pixels} de cada linha, da esquerda para a direita. Essa lógica vem dos monitores de tubo de raios catódicos (CRT): neles, um feixe de elétrons percorria fisicamente a tela nesse padrão e precisava de tempo para voltar ao início de cada linha e de cada quadro. Os tubos desapareceram, mas o protocolo elétrico que os servia sobreviveu, e é justamente esse sinal que a placa DE2-115 gera em seu conector de 15 pinos \cite{ManualFPGA}.
 
+Para que o monitor saiba onde termina cada linha e cada quadro, o padrão define dois sinais de sincronismo, transmitidos por fios dedicados. O HSYNC marca, com um pulso em nível baixo, o fim de uma linha e o início da seguinte; o VSYNC cumpre o mesmo papel para os quadros \cite{ManualFPGA}. Em torno desses pulsos, cada linha se divide em quatro regiões: o intervalo visível, em que os valores de cor efetivamente acionam os \emph{pixels}; o \emph{front porch}, um intervalo de apagamento em que o sinal de cor deve permanecer em 0 V antes do pulso de sincronismo; o pulso propriamente dito; e o \emph{back porch}, o apagamento que antecede o próximo intervalo visível \cite{ManualFPGA}. A mesma estrutura se repete na dimensão vertical, com linhas inteiras fazendo o papel dos \emph{pixels}. Na resolução adotada neste projeto, de 640 por 480 \emph{pixels} a 60 quadros por segundo, cada linha completa soma 800 períodos de \emph{pixel} (640 visíveis, mais 16 de \emph{front porch}, 96 de pulso e 48 de \emph{back porch}) e cada quadro soma 525 linhas (480 visíveis, mais 10 de \emph{front porch}, 2 de pulso e 33 de \emph{back porch}), o que exige um \emph{clock} de \emph{pixel} de 25,175 MHz \cite{ickes_vga}, valor que o manual da placa arredonda para 25 MHz \cite{ManualFPGA}.
+
+Diferentemente dos sinais digitais tratados até aqui, a informação de cor no VGA é analógica: cada componente (vermelho, verde e azul) trafega por um fio próprio como uma tensão contínua, e a lógica digital da FPGA não pode alimentar o conector diretamente. Na DE2-115, os sinais de sincronismo saem direto da FPGA, enquanto a conversão das cores fica a cargo do ADV7123, um conversor digital-analógico triplo de alta velocidade que recebe, a cada pulso do \emph{clock} de \emph{pixel}, os valores digitais das três componentes e gera as três tensões entregues ao monitor; embora o conversor aceite 10 bits por componente, a placa utiliza apenas os 8 bits mais significativos de cada uma \cite{ManualFPGA}. O conversor recebe ainda os sinais auxiliares de \emph{blank} e \emph{sync}, que, quando ativos, forçam as saídas ao nível de preto independentemente dos valores de cor apresentados, mecanismo usado justamente durante os intervalos de apagamento \cite{ickes_vga}.
+
+Falta definir de onde vêm os valores de cor de cada \emph{pixel}, e é aqui que entra o conceito central para este projeto: o \emph{framebuffer}, uma memória de vídeo em que cada posição corresponde a um \emph{pixel} da tela. O controlador VGA percorre essa memória continuamente, no ritmo exato da varredura, lendo o valor de cor da posição correspondente ao \emph{pixel} sendo desenhado naquele instante. O processador, por sua vez, escreve nessa mesma memória de forma independente, alterando a imagem sem qualquer preocupação com a temporização do vídeo. Esse desacoplamento é o que torna o subsistema simples de usar: o processador desenha quando o programa manda, o controlador varre sempre. No projeto, a escrita no \emph{framebuffer} é exposta aos programas pela instrução \texttt{draw\_pixel}, usada para desenhar o tabuleiro e o placar do jogo da velha, como descreve o capítulo de Desenvolvimento.
 
 % --------------------------------------------------------------
 \chapter{Desenvolvimento}
 
 \section{Visão Geral das Modificações na Arquitetura}
+\label{sec:visao_geral_modificacoes}
+
+O projeto sobre o qual os periféricos foram integrados é o processador FerM32bIPS, desenvolvido nas etapas anteriores com as seguintes características: uma arquitetura monociclo inspirada no MIPS, com instruções e palavras de dados de 32 bits, \emph{opcode} nos 6 bits mais significativos e memórias de instruções e de dados separadas, cada uma com 8192 posições endereçadas por 13 bits. A integração preservou esse núcleo e novas funcionalidades foram acrescentadas ao ciclo de execução. Na prática, cada periférico foi descrito como um módulo dedicado em Verilog, acoplado ao \emph{datapath} em pontos específicos, como destaca a \autoref{fig:mudancas-datapath}. O módulo VGA recebe o endereço do \emph{pixel} calculado pela ULA e a cor lida do banco de registradores; o módulo do teclado PS/2 entrega a tecla decodificada ao multiplexador de entrada (\texttt{MUX Input ou Register}); e o módulo UART é comandado diretamente pela unidade de controle e devolve seus dados pelo caminho de escrita no banco de registradores.
+
+\begin{figure}[H]
+	\caption{\emph{Datapath} do processador com os novos módulos em destaque}
+	\centering
+	\includegraphics[width=\textwidth]{imgs/mudancas-datapath.png}
+	\legend{Fonte: O autor.}
+	\label{fig:mudancas-datapath}
+\end{figure}
+
+As três integrações seguem um mesmo padrão. Primeiro, a unidade de controle passou a decodificar seis novos \emph{opcodes}, resumidos na \autoref{tab:novas-instrucoes}, sendo que para cada um deles, novos sinais de controle foram criados no sistema: \texttt{frame\_buffer\_write} para a VGA, \texttt{uart\_send} e os sinais de leitura de estado para a UART, e um novo valor de \texttt{in} na entrada para o teclado. Segundo, as instruções que produzem um valor (tecla lida, \emph{byte} recebido, \emph{flags} de estado) o devolvem ao banco de registradores pelos multiplexadores já existentes no caminho de \emph{write-back}, que ganharam novas entradas. Terceiro, como o processador executa em um \emph{clock} não muito específico, pois pode ser modificado para que as instruções possam ser analisadas, os novos periféricos exigem \emph{clocks} precisos. Os módulos do PS/2 e da UART operam nos 50~MHz nativos da placa; no caso da UART, esses 50~MHz são apenas o \emph{clock} interno do módulo, e a taxa de 9600 bauds da linha serial é derivada dele por um contador que mantém cada bit durante 5208 ciclos. O VGA, por sua vez, trabalha em 25~MHz, e cada travessia entre domínios de \emph{clock} é protegida por sincronizadores de dois \emph{flip-flops} lógicos e detecção de borda.
+
+\begin{table}[H]
+	\caption{Novas instruções adicionadas ao sistema computacional.}
+	\centering
+	\includegraphics[width=\textwidth]{imgs/novas-instrucoes.png}
+	\legend{Fonte: O autor.}
+	\label{tab:novas-instrucoes}
+\end{table}
+
+Além do padrão comum de integração, houve uma modificação estrutural: a reorganização da memória de instruções (MI), ilustrada na \autoref{fig:memoria-instrucoes}, necessária para acomodar o crescimento do SO e o programa complexo Jogo da Velha. O SO ocupa as posições 0 a 1999, limiar definido pela constante \texttt{PROGRS\_INIT} do processador, que deve valer exatamente o mesmo que seu equivalente no compilador, pois é ela quem separa o modo \emph{kernel} do modo usuário. A região de usuário foi particionada da seguinte forma: dez \emph{slots} de 300 instruções para programas simples (posições 2000 a 4999) e um único \emph{slot} de 3192 instruções (posições 5000 a 8191) reservado ao programa complexo, o jogo da velha. Com isso, todo o conjunto coube exatamente nas 8192 posições existentes, sem alargar os barramentos de endereço, e a memória de dados foi particionada de forma espelhada. Deixar o restante do espaço da MI para o jogo da velha foi necessário porque, antes desta etapa, o sistema só comportava programas de até 300 instruções.
+
+\begin{figure}[H]
+	\caption{Novo particionamento da MI: SO, dez \emph{slots} de programas simples e um \emph{slot} para o programa complexo.}
+	\centering
+	\includegraphics[width=0.30\textwidth]{imgs/memoria-instrucoes.png}
+	\legend{Fonte: O autor.}
+	\label{fig:memoria-instrucoes}
+\end{figure}
 
 \section{Saída de Vídeo VGA}
 
 \subsection{Modificações no Processador}
 
+O subsistema de vídeo é formado por dois módulos: um controlador de varredura (\texttt{modulo\_vga}) e uma memória de vídeo (\texttt{modulo\_buffer}). O controlador gera o \emph{clock} de \emph{pixel} de 25~MHz por simples divisão por dois dos 50~MHz da placa e mantém dois contadores de varredura, um horizontal (0 a 799) e um vertical (0 a 524), que reproduzem a estrutura de linha e quadro. A partir desses contadores são derivados os pulsos HSYNC e VSYNC, ativos em nível baixo, e os sinais de \emph{blank} e \emph{sync} entregues ao conversor ADV7123 da placa \cite{ManualFPGA}. Os $800 \times 525$ períodos de \emph{pixel} por quadro resultam em uma taxa de aproximadamente 60~Hz tolerada pelo monitor testado.
+
+O \emph{framebuffer} foi implementado como uma RAM de porta dupla com \emph{clocks} independentes, mapeada nos blocos de memória interna da FPGA, com 3 bits por \emph{pixel}: cada bit liga ou desliga integralmente uma componente de cor, e a expansão para os 8 bits por canal do conversor é feita por replicação, resultando em uma paleta de 8 cores. Adotou-se uma resolução lógica de $80 \times 60$ células, com fator de escala 8, de modo que cada célula do \emph{framebuffer} é desenhada como um bloco de $8 \times 8$ \emph{pixels} físicos na tela de $640 \times 480$. A escolha refletiu uma limitação de memória, pois se aumentasse o tamanho do \emph{buffer}, o número de elementos no mesmo seria aumentado. Isso faria com que o tempo de compilação do projeto, que hoje é por volta de 5 minutos, fosse significativamente aumentado. Além disso, o desenho de um \emph{pixel} por instrução leva, teoricamente, centenas de milissegundos por quadro, enquanto as 4800 células da resolução reduzida podem ser redesenhadas em poucos milissegundos. Mas ainda assim, o fator de escala 8 é suficiente para desenhar o jogo escolhido e torna a compilação de teste e \emph{debugging} muito mais rápida, que foi extremamente importante para o desenvolvimento do projeto.
+
+O acesso do software ao subsistema se dá pela nova instrução \texttt{draw\_pixel}, para a qual a unidade de controle ativa o sinal \texttt{frame\_buffer\_write}. O endereço de escrita é o resultado da ULA, calculado pelo programa como $\mathit{linha} \times 80 + \mathit{coluna}$, e a cor são os 3 bits menos significativos do segundo registrador lido do banco. Como o \emph{framebuffer} tem duas portas independentes, cada lado trabalha no seu próprio ritmo: o processador escreve um \emph{pixel} apenas quando o programa executa a instrução, enquanto o controlador lê a memória sem parar para redesenhar a tela a cada quadro. Desenhar e exibir tornam-se, assim, tarefas independentes, concretizando o desacoplamento discutido na seção~\ref{sec:padrao_vga}.
+
 \subsection{Modificações no Compilador}
 
+No compilador, o suporte na linguagem C- foi inserido diretamente como função global na tabela de símbolos. A função \texttt{draw\_pixel(pos, cor)}, de tipo \texttt{void}, chamada com a sintaxe comum de funções da linguagem, foi declarada antes mesmo da análise semântica, o que evita o erro semântico de função não declarada. O primeiro argumento é a posição do \emph{pixel}, previamente calculada pelo próprio programa em C- como $\mathit{linha} \times 80 + \mathit{coluna}$; essa decisão mantém a instrução no formato I simples do processador e deixa a aritmética de endereçamento a cargo do código de usuário, que pode encapsulá-la em funções auxiliares de desenho.
+
+Na geração de código, a chamada não produz a sequência usual de salto para função: o gerador a reconhece pelo nome e emite diretamente uma única instrução tipo I com o \emph{opcode} \texttt{0b001111}, colocando a posição no campo \texttt{rs}, cujo valor somado ao imediato nulo pela ULA forma o endereço do \emph{framebuffer}, e a cor no campo \texttt{rt}, de onde o \emph{hardware} extrai os 3 bits menos significativos, exatamente a convenção esperada pelo processador.
+
 \subsection{Uso pelos Programas}
+
+O jogo da velha acessa o vídeo exclusivamente por meio de duas funções auxiliares escritas em C- que encapsulam a \texttt{draw\_pixel}: a \texttt{draw\_block}, mostrada na \autoref{fig:codigo-draw-block}, que preenche um retângulo de dimensões arbitrárias com dois laços aninhados calculando a posição $(y_0 + i) \times 80 + (x_0 + j)$ de cada célula, e a \texttt{clear\_area}, que apaga uma faixa horizontal pintando-a de preto. Todo o desenho de mais alto nível, como as linhas do tabuleiro, as marcações dos jogadores, o placar e o símbolo do vencedor, é composto a partir dessas duas primitivas, confirmando na prática a decisão de projeto da seção anterior: a aritmética de endereçamento fica no código de usuário, encapsulada uma única vez.
+
+\begin{figure}[H]
+	\caption{Função auxiliar \texttt{draw\_block}, que encapsula a intrínseca \texttt{draw\_pixel}.}
+	\centering
+	\includegraphics[width=0.75\textwidth]{imgs/codigo-draw-block.png}
+	\legend{Fonte: O autor.}
+	\label{fig:codigo-draw-block}
+\end{figure}
+
+A tela lógica de $80 \times 60$ células foi particionada pelo programa em duas regiões: as linhas 0 a 8 guardam o placar persistente, em que cada vitória vira um bloco colorido (vermelho para o jogador 1, verde para o jogador 2 e branco para empates), e as linhas 10 a 59 contêm o tabuleiro $3 \times 3$. A paleta de 8 cores do \emph{framebuffer} mostrou-se suficiente para o jogo inteiro. A cada nova partida, o programa apaga apenas a faixa do tabuleiro e redesenha as linhas, preservando o placar; durante a partida, cada jogada redesenha somente o bloco da célula marcada. Esses redesenhos seletivos mantêm o custo de desenho baixo mesmo com um \emph{pixel} escrito por instrução.
 
 \section{Entrada de Teclado PS/2}
 
 \subsection{Modificações no Processador}
 
+A recepção dos quadros do teclado é feita pelo módulo \texttt{modulo\_keyboard\_ps2}, que primeiro sincroniza as linhas \texttt{PS2\_CLK} e \texttt{PS2\_DAT} com registradores de dois \emph{flip-flops}, já que ambas chegam de um domínio de \emph{clock} externo, e então amostra a linha de dados a cada borda de descida do \emph{clock} gerado pelo teclado, exatamente como prevê o protocolo (seção~\ref{sec:protocolo_ps2}). Uma máquina de estados percorre o quadro de onze bits: aguarda o bit de \emph{start}, acumula os oito bits de dados e captura o bit de paridade, e por fim valida o quadro conferindo o bit de \emph{stop} e a paridade ímpar \cite{chapweske_ps2}; quadros que violam qualquer uma das duas verificações são descartados.
+
+Sobre o quadro validado atua a lógica de filtragem de eventos. Os \emph{break codes} (prefixo \texttt{0xF0}) são consumidos apenas para registrar que a tecla foi solta, os prefixos de teclas estendidas (\texttt{0xE0}) são ignorados e os reenvios automáticos de uma tecla mantida pressionada são suprimidos pela comparação com o último \emph{make code} aceito, de modo que cada toque do usuário gera exatamente um evento. O \emph{scancode} resultante é então traduzido para ASCII por um decodificador combinacional (\texttt{modulo\_scancoder\_decoder}), uma tabela do \emph{Scan Code Set} 2, como a da \autoref{tab:scan-codes-set-2}, cobrindo alguns dígitos de teste, o teclado numérico e as letras usadas pelo jogo da velha; códigos não mapeados produzem \texttt{0x00}, valor reservado para ``nenhuma tecla''.
+
+\begin{table}[H]
+	\caption{Mapeamento de códigos de digitalização (\emph{Scan Codes}) do teclado PS/2.}
+	\centering
+	\includegraphics[width=0.8\textwidth]{imgs/scan-codes-set-2.png}
+	\legend{Fonte: \citeonline{scancodes_set2}.}
+	\label{tab:scan-codes-set-2}
+\end{table}
+
+A interface com o \emph{datapath} fica no módulo \texttt{modulo\_input}, que mantém um registrador de um \emph{byte} sobrescrito a cada nova tecla e zerado quando lido, uma leitura que impede que a mesma tecla seja processada duas vezes. A nova instrução \texttt{get\_input\_keyboard} seleciona esse registrador no multiplexador de entrada do caminho de \emph{write-back}, e o valor, estendido com zeros para 32 bits, é escrito no registrador de destino. O modelo de uso pelos programas é, portanto, de \emph{polling}: o programa consulta a instrução periodicamente e interpreta \texttt{0x00} como ausência de tecla nova.
+
 \subsection{Modificações no Compilador}
 
+Da mesma forma que na instrução do VGA, a leitura do teclado é dada pela função intrínseca \texttt{keyboard\_input()}, de tipo \texttt{int} e sem parâmetros, correspondente à instrução \texttt{get\_input\_keyboard} do processador, que devolve o código ASCII da última tecla pressionada ou \texttt{0} quando não há tecla nova. Essa forma de retorno permite escrever o laço de \emph{polling} inteiramente em C-: o programa repete a chamada até receber um valor diferente de zero e então trata a tecla.
+
+A codificação segue o padrão das instruções de leitura já existentes no processador: o gerador emite uma instrução tipo I com o \emph{opcode} \texttt{0b010111}, sem operandos de entrada (campo \texttt{rs} preenchido com o registrador \texttt{\$zero}), e o valor lido do periférico é escrito no registrador de destino indicado pelo campo \texttt{rt}, de onde o código gerado o copia para a variável do programa.
+
 \subsection{Uso pelo Sistema Operacional e Aplicações}
+
+O SO continua interagindo com o usuário pelos periféricos originais da placa (chaves, botões, \emph{display} de sete segmentos e LCD); o teclado PS/2 é consumido pela aplicação. A leitura das jogadas está na função \texttt{play\_turn}, mostrada na \autoref{fig:codigo-play-turn}, que materializa o laço de \emph{polling} previsto nas seções anteriores: o programa repete \texttt{keyboard\_input()} até receber um valor diferente de zero e então traduz o código ASCII para uma célula do tabuleiro por comparações encadeadas. Os dois jogadores compartilham o mesmo teclado por zonas distintas: o jogador 1 usa as letras \texttt{Q W E / A S D / Z X C} e o jogador 2, o teclado numérico \texttt{7 8 9 / 4 5 6 / 1 2 3}, ambos dispostos como uma grade $3 \times 3$ espelhando o tabuleiro. Teclas fora da zona do jogador da vez ou jogadas em células ocupadas são simplesmente ignoradas, e o laço volta a consultar o periférico.
+
+\begin{figure}[H]
+	\caption{Função \texttt{play\_turn}: laço de \emph{polling} do teclado e validação da jogada.}
+	\centering
+	\includegraphics[width=0.50\textwidth]{imgs/codigo-play-turn.png}
+	\legend{Fonte: O autor.}
+	\label{fig:codigo-play-turn}
+\end{figure}
+
+O teclado também conduz o fluxo de reinício: ao fim de cada partida, o programa exibe no LCD a pergunta de reinício e entra em um segundo laço de \emph{polling}, aceitando apenas as teclas \texttt{1} (reiniciar) e \texttt{2} (encerrar). Vale notar que a leitura destrutiva implementada no \emph{hardware}, em que cada tecla é consumida uma única vez, garante que um toque do usuário produza exatamente um evento de jogo, mesmo com vários laços de consulta espalhados pelo programa, sem qualquer lógica adicional de filtragem em \emph{software}.
 
 \section{Comunicação Serial UART}
 
 \subsection{Modificações no Processador}
+\label{sec:uart_processador}
+
+O canal serial foi implementado em três módulos: um transmissor (\texttt{uart\_tx}), um receptor (\texttt{uart\_rx}) e um módulo integrador (\texttt{modulo\_uart}) que os une e faz a ponte com o \emph{datapath}. A configuração é a 8N1 com \emph{baud rate} de 9600 descrita na seção~\ref{sec:transmissao_serial_assincrona}, e a duração de cada bit é definida pelo divisor \texttt{BAUD\_DIV} $= 5208$ ciclos, razão entre os 50~MHz da placa e a taxa de 9600 bauds. O subsistema opera diretamente nos 50~MHz da FPGA, e não no \emph{clock} dividido do processador.
+
+O transmissor é uma máquina de estados (repouso, \emph{start}, dados e \emph{stop}) que mantém a comunicação em nível alto quando não há mensagem e, ao ser disparada, serializa o \emph{byte} do bit menos ao mais significativo, sinalizando ocupação pela \emph{flag} \texttt{busy} do módulo \texttt{uart\_tx}. O receptor, após sincronizar a linha com dois \emph{flip-flops}, detecta a borda de descida do \emph{start}, aguarda meio período de bit (\texttt{BAUD\_DIV}/2) e reconfirma o nível baixo antes de aceitar o quadro. Esse método foi pensado para que fosse possível sincronizar as amostragens seguintes, tomadas a cada período completo, ao centro de cada bit. Também existe a possibilidade de um falso \emph{start}, que torna em estado de repouso o receptor, e o caso ótimo que acontece quando um quadro completo gera um pulso de validação que armazena o \emph{byte} recebido. Ao final do quadro completo, o receptor reconhece o \emph{stop} e pode consumir a mensagem recebida.
+
+O módulo integrador resolve os \emph{clocks}: o comando da instrução \texttt{uart\_send} é sincronizado e convertido em detecção de borda de subida, garantindo que cada execução da instrução dispare exatamente um quadro. Na recepção, os 8 bits validados são armazenados em um registrador, cujo estado é consultado por \texttt{uart\_rx\_available} e cujo conteúdo é consumido pela leitura com \texttt{uart\_receive}; as três instruções de leitura devolvem seus valores (estado do transmissor, estado do receptor e \emph{byte} recebido) ao registrador de destino pelo mesmo caminho de escrita já usado pelos demais periféricos, mantendo o modelo de \emph{polling}. Já sobre as ligações elétricas entre FPGA e Arduino Uno, as linhas usam pinos de GPIO da placa: no sentido FPGA-Arduino Uno a conexão é direta, pois os 3,3~V da FPGA são lidos como nível alto pelo microcontrolador, mas no sentido inverso os 5~V do Arduino Uno exigem um divisor de tensão para não danificar o pino da FPGA, além do terra comum entre as placas. O divisor foi montado com dois resistores de 1~k$\Omega$, formando a razão 1:2 que entrega 2,5~V ao pino da FPGA, valor lido com segurança como nível alto. Inicialmente foi pensado em utilizar um conversor de nível lógico, mas, por indicação do docente da disciplina, adotou-se o divisor de tensão, por ser a solução mais simples, e a configuração funcionou corretamente em todos os testes. Para uma melhor generalização do sistema computacional externo, recomenda-se utilizar um conversor de nível lógico, pois a relação adequada entre as tensões não é necessariamente a de 1 para 2 obtida com resistores iguais.
 
 \subsection{Modificações no Compilador}
 
-\subsection{Aplicação: Handshake com o Arduino}
+A funcionalidade da UART é mantida por quatro funções previamente inseridas na tabela de símbolos, que espelham as quatro instruções do processador: \texttt{uart\_send(byte)}, de tipo \texttt{void}, e as leitoras \texttt{uart\_tx\_ready()}, \texttt{uart\_rx\_available()} e \texttt{uart\_receive()}, de tipo \texttt{int}. O conjunto é suficiente para expressar o protocolo completo de comunicação em C-: esperar o transmissor ficar livre, enviar o \emph{byte}, aguardar a resposta do outro lado e consumi-la, tudo por laços de \emph{polling} sobre as duas funções de estado. As funções \texttt{uart\_rx\_available} e \texttt{uart\_tx\_ready} foram pensadas para que houvesse uma sincronização plena entre o kit FPGA e o Arduino Uno, implementando um \emph{handshake} entre os dois sistemas computacionais.
+
+Na codificação, \texttt{uart\_send} segue o padrão: o \emph{byte} a transmitir é carregado em um registrador temporário e emitido no campo \texttt{rs} da instrução de \emph{opcode} \texttt{0b011000}. As três leitoras (\texttt{uart\_tx\_ready}, \texttt{uart\_rx\_available} e \texttt{uart\_receive}) seguem o padrão inverso, sem operandos de entrada e com o resultado (estado do transmissor, estado do receptor ou \emph{byte} recebido) escrito no registrador de destino \texttt{rt}, sob os \emph{opcodes} \texttt{0b011011}, \texttt{0b011010} e \texttt{0b011001}, respectivamente.
+
+\subsection{Aplicação: Handshake com o Arduino Uno}
+
+Do lado da FPGA, o \emph{handshake} completo está na função \texttt{send\_result} do jogo, mostrada na \autoref{fig:codigo-send-result}, que exercita as quatro intrínsecas da UART: o programa espera o transmissor ficar livre consultando \texttt{uart\_tx\_ready()}, envia um único \emph{byte} codificando o resultado da partida (1 para vitória do jogador 1, 2 para o jogador 2, 3 para empate) e então bloqueia em um laço sobre \texttt{uart\_rx\_available()} até a resposta chegar, consumindo-a com \texttt{uart\_receive()}. Esse bloqueio proposital é a sincronização entre os dois sistemas: o jogo permanece parado, com o símbolo do vencedor na tela, enquanto a melodia toca, e só oferece o reinício depois do aviso de fim de som.
+
+\begin{figure}[H]
+	\caption{Função \texttt{send\_result}: envio do resultado e espera pelo ACK via UART.}
+	\centering
+	\includegraphics[width=0.75\textwidth]{imgs/codigo-send-result.png}
+	\legend{Fonte: O autor.}
+	\label{fig:codigo-send-result}
+\end{figure}
+
+Do lado do Arduino Uno, um \emph{sketch} dedicado usa uma porta serial emulada por \emph{software} nos mesmos 9600 bauds e formato 8N1 do módulo da FPGA. A \autoref{fig:codigo-arduino-setup} mostra a configuração, que concentra as informações do enlace: os pinos digitais 10 e 11 fazem os papéis de recepção e transmissão, ligados aos pinos de GPIO da FPGA descritos na \autoref{sec:uart_processador}, o \emph{buzzer} ocupa o pino 8 e o \emph{byte} de reconhecimento é definido como a constante \texttt{0xFF}.
+
+\begin{figure}[H]
+	\caption{Configuração do \emph{sketch} do Arduino Uno: pinagem, \emph{baud rate} e constante de ACK.}
+	\centering
+	\includegraphics[width=0.75\textwidth]{imgs/codigo-arduino-setup.png}
+	\legend{Fonte: O autor.}
+	\label{fig:codigo-arduino-setup}
+\end{figure}
+
+O laço principal do \emph{sketch}, mostrado na \autoref{fig:codigo-arduino-loop}, aguarda o \emph{byte} do resultado, seleciona a melodia correspondente no \emph{buzzer} (ascendente para o jogador 1, descendente para o jogador 2 e dois toques curtos para empate) e, ao terminar, devolve o \emph{byte} de reconhecimento \texttt{0xFF} que libera a FPGA. Um único \emph{byte} em cada sentido foi suficiente para todo o protocolo da aplicação, ilustrando o custo mínimo de integração de um sistema externo pela UART.
+
+\begin{figure}[H]
+	\caption{Laço principal do \emph{sketch} do Arduino Uno: recepção do resultado, melodia e ACK.}
+	\centering
+	\includegraphics[width=0.75\textwidth]{imgs/codigo-arduino-loop.png}
+	\legend{Fonte: O autor.}
+	\label{fig:codigo-arduino-loop}
+\end{figure}
 
 \section{Síntese das Modificações no Compilador}
 
+Vale destacar que nenhuma das integrações exigiu mudanças no léxico ou na gramática da linguagem C-: as seis novas operações entram como funções intrínsecas, pré-registradas na tabela de símbolos do compilador antes da análise semântica, de modo que as chamadas sejam analisadas como chamadas de funções globais comuns. A especialização acontece apenas nas duas últimas fases: o gerador de código reconhece os nomes reservados e, em vez da sequência usual de chamada com salto e retorno, emite diretamente a instrução tipo I do periférico com sua convenção de operandos, e o codificador binário mapeia cada nome ao seu \emph{opcode} de 6 bits (\autoref{tab:novas-instrucoes}).
+
+A segunda modificação foi estrutural: o novo particionamento de memória da \autoref{fig:memoria-instrucoes} é definido no compilador por um cabeçalho de constantes compartilhado, que fixa o limiar do SO em 2000 instruções, os dez \emph{slots} simples de 300 instruções e o \emph{slot} complexo de 3192, com a memória de dados particionada de forma análoga. É desse cabeçalho que a geração de código extrai os endereços-base de cada programa, e é por ele que compilador e processador se mantêm em \emph{lockstep}: o limiar de 2000 deve valer exatamente o mesmo que a constante equivalente do processador, como discutido na \autoref{sec:visao_geral_modificacoes}. Um trecho deste \emph{header} pode ser visto na \autoref{fig:header-memory-layout}.
+
+\begin{figure}[H]
+	\caption{Trecho de código do \emph{header} que mostra variáveis globais usadas na montagem da MI.}
+	\centering
+	\includegraphics[width=0.70\textwidth]{imgs/desenvolvimento-layout-memotia-compilador.png}
+	\legend{Fonte: O autor.}
+	\label{fig:header-memory-layout}
+\end{figure}
+
+\subsection{Modificações no \emph{Relocate}}
+
+O \emph{relocate} é o utilitário que transforma os binários compilados individualmente na imagem única de ROM consumida pelo processador. Ele mantém um catálogo dos programas do sistema, em que cada um é marcado como simples ou complexo, e monta a memória na ordem exata do particionamento: escreve primeiro o binário do SO, completando com instruções nulas até a posição 2000, depois percorre os dez \emph{slots} simples e, por fim, o \emph{slot} complexo. Em cada \emph{slot}, o utilitário verifica se o programa cabe no espaço reservado, abortando a montagem em caso de estouro, e preenche o espaço restante, inclusive de \emph{slots} vazios, com instruções nulas, o que mantém fixos os endereços-base de todos os programas. O resultado é o arquivo de inicialização da memória de instruções, carregado na ROM do processador no momento da síntese.
+
 \section{Síntese das Modificações no Sistema Operacional}
+
+Diferentemente do processador e do compilador, o SO não precisou de nenhum tratamento específico para os periféricos: como as novas instruções executam em um único ciclo e seguem o modelo de \emph{polling}, os programas de usuário as utilizam diretamente, sem chamadas de sistema ou rotinas intermediárias de \emph{driver}. As modificações no SO foram, portanto, estruturais, motivadas por dois fatores desta etapa: o crescimento do próprio SO, cujo limiar de memória dobrou de 1000 para as 2000 instruções da \autoref{fig:memoria-instrucoes}, e a necessidade de hospedar e lançar o programa complexo, o jogo da velha, que concentra o uso dos três periféricos.
+
+Para isso, as estruturas internas de gerência de processos foram estendidas para refletir o novo particionamento. O SO mantém vetores com os endereços-base das memórias de instruções e de dados de cada processo; os identificadores 1 a 10 continuam mapeando os \emph{slots} simples, e o identificador 11 passou a designar o \emph{slot} complexo, com bases inicializadas a partir de novas constantes internas que espelham as do compilador. Como a segmentação de memória já era feita por registradores de base, por meio das instruções \texttt{os\_set\_im\_base} e \texttt{os\_set\_dm\_base}, nenhum mecanismo novo foi necessário: lançar o programa complexo consiste apenas em apontar as bases para os valores do novo \emph{slot}. A \autoref{fig:funcao-init-constants-so} ilustra essas modificações tanto do início dos programas quanto o décimo primeiro programa, o jogo da velha.
+
+
+\begin{figure}[H]
+	\caption{Função do SO que inicializa os valores dos vetores responsáveis pelo gerenciamento dos processos.}
+	\centering
+	\includegraphics[width=0.70\textwidth]{imgs/desenvolvimento-mudancas-inicializacao-slots-so.png}
+	\legend{Fonte: O autor.}
+	\label{fig:funcao-init-constants-so}
+\end{figure}
+
+A porta de entrada para o jogo é um novo desdobramento no menu do modo não preemptivo: após escolhê-lo, o usuário decide entre o modo S, que executa um dos dez programas simples, e o modo C, no qual o SO fixa o processo corrente no identificador do programa complexo. Ambos reutilizam a mesma rotina de execução, que salva o contexto do SO, aponta o contador de programa e as bases para o \emph{slot} do processo e salta para ele; ao término do programa, o SO restaura as próprias bases e o contexto e retorna ao menu. O modo preemptivo permaneceu restrito aos dez programas simples, decisão coerente com o uso dos periféricos pelo jogo: executado sem preempção, ele detém o teclado, o vídeo e a UART do início ao fim da partida, sem disputa com outros processos. A \autoref{fig:novo-shell} ilustra a alteração do shell, que agora no modo não-preemptivo, pode-se escolher entre algum dos 10 programas simples ou mesmo o programa do jogo da velha (a opção \texttt{Complexa}).
+
+\begin{figure}[H]
+	\caption{Novo shell que tem suporte ao programa do jogo da velha.}
+	\centering
+	\includegraphics[width=0.70\textwidth]{imgs/desenvolvimento-novo-shell-complexo-simples.png}
+	\legend{Fonte: O autor.}
+	\label{fig:novo-shell}
+\end{figure}
 
 % --------------------------------------------------------------
 \chapter{Resultados}
 
+Este capítulo apresenta os resultados obtidos nos testes do sistema completo realizados no laboratório. Todos os testes foram feitos no kit DE2-115, com o processador já compilado com as novas funcionalidades e a ROM previamente inicializada com o conteúdo montado pelo \emph{relocate}, que reúne o SO, os dez programas simples e o jogo da velha. Em todos os testes o comportamento observado foi o esperado, validando as funcionalidades implementadas. As seções a seguir apresentam a montagem do ambiente de testes, a execução do jogo, que exercita vídeo e teclado simultaneamente, e a comunicação com o Arduino Uno pela UART.
+
+\section{Ambiente de Testes}
+
+A \autoref{fig:resultado-montagem-completa} mostra a montagem completa utilizada na validação do projeto. O kit DE2-115 aparece conectado a um monitor pela interface VGA e a um teclado pelo conector PS/2; pelos pinos de GPIO, liga-se ao Arduino Uno, responsável por comunicar os resultados das partidas, e à \emph{protoboard} que abriga o divisor de tensão e o \emph{buzzer} usado para sinalizar o fim de cada partida.
+
+\begin{figure}[H]
+	\caption{Montagem completa do ambiente de testes: DE2-115, monitor VGA, teclado PS/2 e Arduino Uno.}
+	\centering
+	\includegraphics[width=0.85\textwidth]{imgs/resultado-montagem-completa.png}
+	\legend{Fonte: O autor.}
+	\label{fig:resultado-montagem-completa}
+\end{figure}
+
+Na \autoref{fig:resultado-montagem-completa}, observa-se todo o interfaceamento do sistema: o monitor ligado à saída VGA da placa, o teclado PS/2 na entrada correspondente e a conexão entre a FPGA e o Arduino Uno, que por sua vez se liga à \emph{protoboard} com o \emph{buzzer}. Tanto a DE2-115 quanto o Arduino estão conectados ao computador via USB para a gravação dos programas. Pelo Quartus Prime Lite Edition, no caso da FPGA, e pelo Arduino IDE, no caso do microcontrolador. Quanto à alimentação, o Arduino usa a própria porta USB, enquanto a DE2-115 depende da fonte externa de 12~V \cite{ManualFPGA}. As ligações físicas entre a placa e o Arduino, e deste com a \emph{protoboard}, foram feitas com \emph{jumpers}.
+
+A ligação entre a FPGA e o Arduino Uno aparece em detalhe na \autoref{fig:resultado-ligacao-fpga-arduino}. É a montagem descrita na \autoref{sec:uart_processador}: o fio do sentido FPGA-Arduino Uno vai direto, já que o Arduino Uno lê os 3,3~V da FPGA como nível alto, e o do sentido contrário passa pelo divisor de tensão de razão 1:2, que baixa os 5~V do Arduino Uno para os 2,5~V que o pino da FPGA tolera. A \autoref{fig:resultado-divisor-tensao} ilustra a configuração elétrica usada, em que \textbf{B} indica a saída de 5~V do Arduino Uno, \textbf{A}, a entrada da FPGA já dividida para 2,5~V, e \textbf{C}, o terra comum às duas placas. O \emph{buzzer} também fica na \emph{protoboard} para ser acionado pelo Arduino Uno quando uma partida for concluída.
+
+\begin{figure}[H]
+	\caption{Detalhe da ligação FPGA-Arduino Uno: fios da UART, divisor de tensão  e \emph{buzzer}.}
+	\centering
+	\includegraphics[width=0.75\textwidth]{imgs/resultado-ligacao-fpga-arduino.png}
+	\legend{Fonte: O autor.}
+	\label{fig:resultado-ligacao-fpga-arduino}
+\end{figure}
+
+\begin{figure}[H]
+	\caption{Detalhe do divisor de tensão usado na razão 1:2.}
+	\centering
+	\includegraphics[width=0.50\textwidth]{imgs/resultado-divisor-tensao-croped-marked.png}
+	\legend{Fonte: O autor.}
+	\label{fig:resultado-divisor-tensao}
+\end{figure}
+
+A \autoref{fig:resultado-placa-operacao} mostra a placa em operação, com o menu de reinício do jogo no \emph{display} LCD. Os periféricos das etapas anteriores (LCD, \emph{switches}, \emph{display} de sete segmentos e botões) continuam funcionando normalmente: como suas instruções são independentes das demais, nada foi afetado pelas mudanças estruturais desta etapa.
+
+\begin{figure}[H]
+	\caption{DE2-115 em operação, com a pergunta de reinício do jogo no \emph{display} LCD.}
+	\centering
+	\includegraphics[width=0.75\textwidth]{imgs/resultado-placa-operacao.png}
+	\legend{Fonte: O autor.}
+	\label{fig:resultado-placa-operacao}
+\end{figure}
+
+\section{Execução do Jogo: Vídeo e Teclado}
+
+Com o programa complexo lançado pelo modo ``\textbf{Complexo}'' do menu, o jogo passa a usar a VGA e o teclado ao mesmo tempo. A \autoref{fig:resultado-vga-partida} mostra uma partida em andamento: o placar na faixa superior e, logo abaixo, o tabuleiro com os blocos coloridos dos dois jogadores nos locais escolhidos. Neste caso, a sessão havia começado há pouco, sem nenhuma partida concluída, o que explica o placar zerado.
+
+Ainda sobre a \autoref{fig:resultado-vga-partida}, o que visivelmente está funcionando são as jogadas mostradas no monitor VGA. A imagem se mostrou estável na frequência de 60~Hz na execução de todos os testes, não apresentando ruídos, trepidações, piscadas ou qualquer outro tipo de problema. Essa estabilidade pode ser explicada devido à forma de escrita e leitura na RAM estarem sendo feitas de forma independente, em \emph{clocks} diferentes, sendo o \emph{clock} de saída (leitura) bem superior ao de entrada (de escrita, do processador).
+
+Já sobre o PS/2, o teclado, atrelado à lógica em C- do jogo, também se mostrou correto: a leitura dos \emph{make codes}, a posterior decodificação para ASCII e, ao final, o salvamento da tecla na memória. Vale mencionar que toda a validação das jogadas é feita na própria lógica em C- do jogo, sem qualquer filtragem em Verilog. Isso confirma que a interface de \emph{hardware} é suficiente para aplicações interativas com essa mesma natureza do funcionamento do jogo da velha.
+
+\begin{figure}[H]
+	\caption{Partida em andamento: placar zerado no topo e tabuleiro com jogadas de ambos os jogadores.}
+	\centering
+	\includegraphics[width=0.75\textwidth]{imgs/resultado-vga-partida.png}
+	\legend{Fonte: O autor.}
+	\label{fig:resultado-vga-partida}
+\end{figure}
+
+Da \autoref{fig:resultado-vga-fim-1-1} à \autoref{fig:resultado-vga-fim-1-2} estão quatro fins de partida consecutivos da mesma sessão, um para cada desfecho possível (a vitória do jogador 1 aparece duas vezes, para mostrar o funcionamento incremental do placar). Ao fim de cada partida o programa escreve de forma sobreposta ao tabuleiro o símbolo do resultado. Ou seja, há um anúncio do jogador vencedor. O anúncio se faz pela barra vertical vermelha para o jogador 1, pelas duas barras verticais verdes para o jogador 2 e pela barra horizontal branca para a velha. No placar, o desfecho vira um quadrado colorido na fileira correspondente. Após anunciar o vencedor e incrementar a contagem de partidas vencidas, o jogo fica bloqueado esperando o Arduino Uno tocar o \emph{buzzer}. Após o toque, o Arduino Uno envia o ACK de retorno à FPGA e o programa do Jogo da Velha mostra no \emph{display} LCD a mensagem da \autoref{fig:resultado-placa-operacao}.
+
+Na \autoref{fig:resultado-vga-fim-1-1}, o jogador 1 vence a primeira partida da sessão: a barra vertical vermelha é sobreposta ao centro do tabuleiro e a primeira marca vermelha aparece no placar.
+
+\begin{figure}[H]
+	\caption{Fim de partida: primeira vitória do jogador 1, com a barra vertical vermelha sobre o tabuleiro e a primeira marca no placar.}
+	\centering
+	\includegraphics[width=0.80\textwidth]{imgs/resultado-vga-fim-1-1.png}
+	\legend{Fonte: O autor.}
+	\label{fig:resultado-vga-fim-1-1}
+\end{figure}
+
+Na partida seguinte (\autoref{fig:resultado-vga-fim-2}), é o jogador 2 quem vence: o símbolo verde é sobreposto ao tabuleiro e a marca verde iguala o placar em uma vitória para cada lado.
+
+\begin{figure}[H]
+	\caption{Fim de partida: vitória do jogador 2, com o símbolo verde sobre o tabuleiro e o placar igualado.}
+	\centering
+	\includegraphics[width=0.80\textwidth]{imgs/resultado-vga-fim-2.png}
+	\legend{Fonte: O autor.}
+	\label{fig:resultado-vga-fim-2}
+\end{figure}
+
+A \autoref{fig:resultado-vga-fim-velha} mostra o terceiro desfecho, a velha: as nove células preenchidas sem que nenhum jogador conseguisse vencer. Nesse caso é escrita no tabuleiro uma barra horizontal branca, e a marca vai para a terceira fileira do placar.
+
+\begin{figure}[H]
+	\caption{Fim de partida: velha, com o tabuleiro completo, a barra horizontal branca e a marca de empate no placar.}
+	\centering
+	\includegraphics[width=0.80\textwidth]{imgs/resultado-vga-fim-velha.png}
+	\legend{Fonte: O autor.}
+	\label{fig:resultado-vga-fim-velha}
+\end{figure}
+
+A última tela (\autoref{fig:resultado-vga-fim-1-2}) é uma nova vitória do jogador 1, agora com o placar acumulado da sessão: duas marcas vermelhas, uma verde e uma branca. O que muda e o que não muda entre as quatro telas resume a divisão em duas áreas: o tabuleiro é limpo a cada reinício de partida, enquanto o placar persiste durante toda a sessão, sendo zerado apenas quando o jogo é lançado novamente pelo SO.
+
+Quanto ao teclado, nenhuma jogada se perdeu ou se repetiu nas partidas realizadas: cada toque resultou em exatamente uma jogada, seguida da troca de turno. O mapeamento por zonas também funcionou como projetado, pois durante o turno de cada jogador apenas as suas teclas eram aceitas.
+
+\begin{figure}[H]
+	\caption{Fim de partida: segunda vitória do jogador 1, com o placar acumulado da sessão (duas vitórias vermelhas, uma verde e uma velha).}
+	\centering
+	\includegraphics[width=0.80\textwidth]{imgs/resultado-vga-fim-1-2.png}
+	\legend{Fonte: O autor.}
+	\label{fig:resultado-vga-fim-1-2}
+\end{figure}
+
+\section{Comunicação com o Arduino Uno}
+
+Para acompanhar o canal UART durante os testes, o Arduino Uno ficou conectado ao computador pela porta USB, usada para compilação e depuração do programa através do Arduino IDE. A \autoref{fig:resultado-serial-arduino} mostra o registro do monitor serial: a cada fim de partida, o Arduino Uno imprime o resultado recebido da FPGA (1, 2 ou 3), toca a melodia e registra o envio do ACK. Isso cobre os dois sentidos do canal: a chegada correta do resultado comprova o funcionamento do transmissor da FPGA, e o retorno do jogo à tela de reinício após a melodia comprova que o receptor pode consumir o ACK, que passou pelo divisor de tensão no caminho da transmissão.
+
+\begin{figure}[H]
+	\caption{Monitor serial do Arduino Uno durante os testes: \emph{bytes} recebidos da FPGA e envio do ACK.}
+	\centering
+	\includegraphics[width=0.80\textwidth]{imgs/resultado-serial-arduino.png}
+	\legend{Fonte: O autor.}
+	\label{fig:resultado-serial-arduino}
+\end{figure}
+
+Toda a comunicação ocorreu à taxa de 9600~bauds, configurada de forma idêntica nos dois lados do canal. Do lado do Arduino Uno, essa configuração aparece na parte superior da \autoref{fig:resultado-serial-arduino}, nas chamadas \texttt{Serial.begin(9600)} e \texttt{fpgaSerial.begin(9600)}, que inicializam, respectivamente, o monitor serial USB e a porta ligada à FPGA. Do lado da FPGA, o mesmo valor é fixado nos módulos de transmissão e recepção da UART, e a coincidência das taxas é justamente o que permitiu a troca de \emph{bytes} sem erros durante todos os testes.
+
 % --------------------------------------------------------------
 \chapter{Conclusão}
 
-\phantompart
+Este trabalho projetou, implementou e validou a integração de três periféricos de comunicação digital ao processador FerM32bIPS: a saída de vídeo VGA, a entrada de teclado PS/2 e o canal serial UART. Para isso, o compilador da linguagem C- e o SO desenvolvidos nas etapas anteriores foram estendidos em conjunto com o processador. A lacuna apontada na Introdução foi, assim, preenchida: o sistema computacional, antes restrito aos periféricos da própria placa, passou a exibir imagens em um monitor, a receber comandos de um teclado e a trocar \emph{bytes} com um microcontrolador externo, cumprindo o objetivo geral desta etapa.
+
+Os conceitos levantados no estudo bibliográfico refletiram diretamente nas decisões de projeto. As duas formas opostas de sincronização estudadas na Fundamentação Teórica apareceram lado a lado no \emph{hardware}: no PS/2, é o próprio teclado quem dita o ritmo da comunicação, enquanto na UART os dois lados apenas combinam previamente a velocidade de transmissão. Da mesma forma, o \emph{framebuffer} concretizou a separação entre desenhar e exibir prevista para o padrão VGA, permitindo que o processador e o controlador de vídeo trabalhem em ritmos independentes.
+
+A integração seguiu um mesmo padrão nas três frentes, o que se mostrou uma decisão acertada. No processador, cada periférico virou um módulo dedicado em Verilog, acoplado ao \emph{datapath} por seis novas instruções e pelo modelo de \emph{polling}. No compilador, as mesmas operações viraram funções intrínsecas, sem qualquer mudança no léxico ou na gramática de C-, mantidas em \emph{lockstep} com os \emph{opcodes} do processador. No SO, as mudanças foram estruturais: a memória foi reparticionada para acomodar o crescimento do sistema e o \emph{slot} do programa complexo, e o menu ganhou o desdobramento que lança o jogo da velha. Essa uniformidade reduziu o custo de cada nova integração e manteve os três subsistemas coerentes entre si.
+
+A validação em \emph{hardware}, apresentada no capítulo de Resultados, confirmou o funcionamento do conjunto no kit DE2-115. O jogo da velha, escolhido como demonstração integrada, exercitou os três periféricos simultaneamente: a imagem manteve-se estável a 60~Hz durante todos os testes, nenhuma jogada foi perdida ou duplicada pelo teclado e o \emph{handshake} bidirecional com o Arduino Uno ocorreu sem erros a 9600~bauds, atravessando o divisor de tensão no sentido de recepção. Com isso, todos os objetivos específicos definidos para esta etapa foram atendidos.
+
+Os principais desafios do desenvolvimento concentraram-se nas fronteiras entre os subsistemas. Manter o \emph{lockstep} entre compilador e processador exigiu disciplina para que \emph{opcodes} e limiares de memória valessem exatamente o mesmo dos dois lados; as travessias entre domínios de \emph{clock} pediram sincronizadores e detecção de borda em cada periférico; e a diferença entre os níveis lógicos do Arduino Uno (5~V) e da FPGA (3,3~V) foi resolvida com o divisor de tensão de razão 1:2. Também foi preciso planejar o novo particionamento de memória para que o SO, os dez programas simples e o programa complexo coubessem exatamente nas 8192 posições existentes, sem alargar os barramentos de endereço.
+
+Como desdobramentos futuros, quatro caminhos se destacam. O primeiro é substituir o divisor de tensão por um conversor de nível lógico, generalizando o enlace serial para dispositivos cuja relação de tensões não seja a de 1 para 2 obtida com resistores iguais. O segundo é evoluir o modelo de \emph{polling} para um mecanismo de interrupções de periféricos, aproveitando a infraestrutura de interrupção já existente no processador e liberando os programas dos laços de consulta. O terceiro é ampliar o \emph{framebuffer}, em resolução ou em profundidade de cor, avaliando o compromisso com o consumo de blocos de memória e o tempo de síntese. O quarto é estender o modo preemptivo aos programas complexos, o que exigiria uma política de gerência dos periféricos compartilhados entre processos. Com processador, compilador, SO e, agora, entrada e saída interativas, o FerM32bIPS encerra esta etapa como um sistema computacional completo, construído e validado de ponta a ponta em \emph{hardware}.
 
 % ----------------------------------------------------------
 \bibliography{referencias}
 
-\end{document}
+\end{document} 
